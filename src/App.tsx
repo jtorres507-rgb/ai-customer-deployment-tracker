@@ -844,6 +844,54 @@ function CustomersPage({
   onDeleteCustomer: (customer: Customer) => void;
   deletingCustomerId: string | null;
 }) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [stageFilter, setStageFilter] = useState("All Stages");
+  const [healthFilter, setHealthFilter] = useState("All Health");
+
+  const filteredCustomers = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    return customers.filter((customer) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        [
+          customer.company_name,
+          customer.industry,
+          customer.account_owner,
+          customer.deployment_stage,
+          customer.health_status,
+          customer.primary_blocker ?? "",
+          customer.next_action ?? "",
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedSearch);
+
+      const matchesStage =
+        stageFilter === "All Stages" ||
+        customer.deployment_stage === stageFilter;
+
+      const matchesHealth =
+        healthFilter === "All Health" ||
+        customer.health_status === healthFilter;
+
+      return matchesSearch && matchesStage && matchesHealth;
+    });
+  }, [customers, searchTerm, stageFilter, healthFilter]);
+
+  const stageOptions = [
+    "All Stages",
+    "Discovery",
+    "Readiness Review",
+    "Security Review",
+    "Pilot",
+    "Production",
+    "Expansion",
+    "Blocked",
+  ];
+
+  const healthOptions = ["All Health", "Healthy", "At Risk", "Blocked"];
+
   return (
     <section className="mt-8">
       <p className="text-sm font-bold uppercase tracking-[0.32em] text-cyan-300">
@@ -876,11 +924,45 @@ function CustomersPage({
               Customer Deployment Table
             </h2>
             <p className="mt-1 text-sm text-slate-400">
-              Live customer records loaded from Supabase.
+              Live customer records loaded from Supabase with search and filter controls.
             </p>
           </div>
 
-          <StatusPill tone="emerald">{customers.length} Records</StatusPill>
+          <StatusPill tone="emerald">
+            {filteredCustomers.length} of {customers.length} Records
+          </StatusPill>
+        </div>
+
+        <div className="mt-6 grid gap-3 xl:grid-cols-12">
+          <div className={`${glass} flex items-center gap-3 px-4 py-3 xl:col-span-6`}>
+            <Search size={18} className="text-slate-500" />
+            <input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
+              placeholder="Search customers, industries, owners, blockers..."
+            />
+          </div>
+
+          <select
+            value={stageFilter}
+            onChange={(event) => setStageFilter(event.target.value)}
+            className="rounded-2xl border border-slate-700/70 bg-slate-950/50 px-4 py-3 text-sm font-semibold text-slate-200 outline-none transition focus:border-cyan-400 xl:col-span-3"
+          >
+            {stageOptions.map((stage) => (
+              <option key={stage}>{stage}</option>
+            ))}
+          </select>
+
+          <select
+            value={healthFilter}
+            onChange={(event) => setHealthFilter(event.target.value)}
+            className="rounded-2xl border border-slate-700/70 bg-slate-950/50 px-4 py-3 text-sm font-semibold text-slate-200 outline-none transition focus:border-cyan-400 xl:col-span-3"
+          >
+            {healthOptions.map((health) => (
+              <option key={health}>{health}</option>
+            ))}
+          </select>
         </div>
 
         <div className="mt-7 overflow-hidden rounded-3xl border border-slate-700/70">
@@ -895,7 +977,18 @@ function CustomersPage({
           </div>
 
           <div className="divide-y divide-slate-800">
-            {customers.map((customer) => (
+            {filteredCustomers.length === 0 && (
+              <div className="px-5 py-10 text-center">
+                <p className="text-lg font-bold text-white">
+                  No matching customers found
+                </p>
+                <p className="mt-2 text-sm text-slate-400">
+                  Adjust your search or filter selections.
+                </p>
+              </div>
+            )}
+
+            {filteredCustomers.map((customer) => (
               <div
                 key={customer.id}
                 className="grid grid-cols-12 items-center px-5 py-5 text-sm transition hover:bg-slate-800/40"
@@ -946,13 +1039,38 @@ function CustomersPage({
                     disabled={deletingCustomerId === customer.id}
                     className="rounded-xl border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-xs font-bold text-rose-300 transition hover:bg-rose-400/20 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {deletingCustomerId === customer.id ? "Deleting..." : "Delete"}
+                    {deletingCustomerId === customer.id
+                      ? "Deleting..."
+                      : "Delete"}
                   </button>
                 </div>
               </div>
             ))}
           </div>
         </div>
+
+        {(searchTerm || stageFilter !== "All Stages" || healthFilter !== "All Health") && (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/50 p-4">
+            <p className="text-sm text-slate-400">
+              Showing{" "}
+              <span className="font-bold text-cyan-300">
+                {filteredCustomers.length}
+              </span>{" "}
+              matching records.
+            </p>
+
+            <button
+              onClick={() => {
+                setSearchTerm("");
+                setStageFilter("All Stages");
+                setHealthFilter("All Health");
+              }}
+              className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-slate-300 transition hover:bg-slate-800"
+            >
+              Clear Filters
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
