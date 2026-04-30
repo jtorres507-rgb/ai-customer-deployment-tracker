@@ -8,6 +8,8 @@ import {
 } from "react";
 import { supabase } from "./lib/supabase";
 import type { Customer } from "./types/customer";
+import type { Deployment } from "./types/deployment";
+import type { UseCase } from "./types/useCase";
 
 import {
   Activity,
@@ -80,6 +82,13 @@ function getHealthTone(health: string): Tone {
   if (health === "Healthy") return "emerald";
   if (health === "Blocked") return "rose";
   if (health === "At Risk") return "amber";
+  return "slate";
+}
+
+function getRiskTone(risk: string): Tone {
+  if (risk === "Low") return "emerald";
+  if (risk === "Medium") return "amber";
+  if (risk === "High") return "rose";
   return "slate";
 }
 
@@ -482,141 +491,97 @@ function CustomerFormModal({
         )}
 
         <form onSubmit={handleSubmit} className="mt-7 grid gap-5 md:grid-cols-2">
-          <div>
-            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-              Company Name
-            </label>
-            <input
-              value={formData.company_name}
-              onChange={(event) =>
-                updateField("company_name", event.target.value)
-              }
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
-              placeholder="Example: Acme Global Corp."
-            />
-          </div>
+          <input
+            value={formData.company_name}
+            onChange={(event) =>
+              updateField("company_name", event.target.value)
+            }
+            className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+            placeholder="Company Name"
+          />
 
-          <div>
-            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-              Industry
-            </label>
-            <input
-              value={formData.industry}
-              onChange={(event) => updateField("industry", event.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
-              placeholder="Example: Logistics"
-            />
-          </div>
+          <input
+            value={formData.industry}
+            onChange={(event) => updateField("industry", event.target.value)}
+            className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+            placeholder="Industry"
+          />
 
-          <div>
-            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-              Account Owner
-            </label>
-            <input
-              value={formData.account_owner}
-              onChange={(event) =>
-                updateField("account_owner", event.target.value)
-              }
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
-              placeholder="Example: AI Success"
-            />
-          </div>
+          <input
+            value={formData.account_owner}
+            onChange={(event) =>
+              updateField("account_owner", event.target.value)
+            }
+            className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+            placeholder="Account Owner"
+          />
 
-          <div>
-            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-              Health Status
-            </label>
-            <select
-              value={formData.health_status}
-              onChange={(event) =>
-                updateField("health_status", event.target.value)
-              }
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
-            >
-              <option>Healthy</option>
-              <option>At Risk</option>
-              <option>Blocked</option>
-            </select>
-          </div>
+          <select
+            value={formData.health_status}
+            onChange={(event) =>
+              updateField("health_status", event.target.value)
+            }
+            className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+          >
+            <option>Healthy</option>
+            <option>At Risk</option>
+            <option>Blocked</option>
+          </select>
 
-          <div>
-            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-              Deployment Stage
-            </label>
-            <select
-              value={formData.deployment_stage}
-              onChange={(event) =>
-                updateField("deployment_stage", event.target.value)
-              }
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
-            >
-              <option>Discovery</option>
-              <option>Readiness Review</option>
-              <option>Security Review</option>
-              <option>Pilot</option>
-              <option>Production</option>
-              <option>Expansion</option>
-              <option>Blocked</option>
-            </select>
-          </div>
+          <select
+            value={formData.deployment_stage}
+            onChange={(event) =>
+              updateField("deployment_stage", event.target.value)
+            }
+            className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+          >
+            <option>Discovery</option>
+            <option>Readiness Review</option>
+            <option>Security Review</option>
+            <option>Pilot</option>
+            <option>Production</option>
+            <option>Expansion</option>
+            <option>Blocked</option>
+          </select>
 
-          <div>
-            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-              Readiness Score
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={formData.readiness_score}
-              onChange={(event) =>
-                updateField("readiness_score", Number(event.target.value))
-              }
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
-            />
-          </div>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            value={formData.readiness_score}
+            onChange={(event) =>
+              updateField("readiness_score", Number(event.target.value))
+            }
+            className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+            placeholder="Readiness Score"
+          />
 
-          <div>
-            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-              Monthly Value
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={formData.monthly_value}
-              onChange={(event) =>
-                updateField("monthly_value", Number(event.target.value))
-              }
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
-              placeholder="Example: 50000"
-            />
-          </div>
+          <input
+            type="number"
+            min="0"
+            value={formData.monthly_value}
+            onChange={(event) =>
+              updateField("monthly_value", Number(event.target.value))
+            }
+            className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+            placeholder="Monthly Value"
+          />
 
-          <div>
-            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-              Primary Blocker
-            </label>
-            <input
-              value={formData.primary_blocker}
-              onChange={(event) =>
-                updateField("primary_blocker", event.target.value)
-              }
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
-              placeholder="Example: None"
-            />
-          </div>
+          <input
+            value={formData.primary_blocker}
+            onChange={(event) =>
+              updateField("primary_blocker", event.target.value)
+            }
+            className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+            placeholder="Primary Blocker"
+          />
 
-          <div className="md:col-span-2">
-            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-              Next Action
-            </label>
-            <textarea
-              value={formData.next_action}
-              onChange={(event) => updateField("next_action", event.target.value)}
-              className="mt-2 min-h-28 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
-              placeholder="Example: Schedule technical readiness review"
-            />
-          </div>
+          <textarea
+            value={formData.next_action}
+            onChange={(event) => updateField("next_action", event.target.value)}
+            className="min-h-28 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400 md:col-span-2"
+            placeholder="Next Action"
+          />
 
           <div className="flex justify-end gap-3 md:col-span-2">
             <button
@@ -699,14 +664,12 @@ function DashboardPage({
 
       <section className="mt-6 grid gap-6 xl:grid-cols-12">
         <div className={`${panel} xl:col-span-8 p-6`}>
-          <div>
-            <h2 className="text-2xl font-bold text-white">
-              Active Customer Deployments
-            </h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Live customer deployment records loaded from Supabase.
-            </p>
-          </div>
+          <h2 className="text-2xl font-bold text-white">
+            Active Customer Deployments
+          </h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Live customer deployment records loaded from Supabase.
+          </p>
 
           <div className="mt-7 space-y-4">
             {isLoading && (
@@ -730,10 +693,7 @@ function DashboardPage({
                 >
                   <div className="grid gap-5 lg:grid-cols-12 lg:items-center">
                     <div className="lg:col-span-3">
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-                        Customer
-                      </p>
-                      <h3 className="mt-2 text-lg font-bold text-white">
+                      <h3 className="text-lg font-bold text-white">
                         {row.company_name}
                       </h3>
                       <p className="mt-1 text-xs text-slate-500">
@@ -742,41 +702,27 @@ function DashboardPage({
                     </div>
 
                     <div className="lg:col-span-2">
-                      <p className="text-xs text-slate-500">Stage</p>
-                      <div className="mt-2">
-                        <StatusPill tone={getStageTone(row.deployment_stage)}>
-                          {row.deployment_stage}
-                        </StatusPill>
-                      </div>
+                      <StatusPill tone={getStageTone(row.deployment_stage)}>
+                        {row.deployment_stage}
+                      </StatusPill>
                     </div>
 
-                    <div className="lg:col-span-2">
-                      <p className="text-xs text-slate-500">Readiness</p>
-                      <p className="mt-1 text-2xl font-bold text-cyan-300">
-                        {row.readiness_score}%
-                      </p>
+                    <div className="lg:col-span-2 text-2xl font-bold text-cyan-300">
+                      {row.readiness_score}%
                     </div>
 
-                    <div className="lg:col-span-3">
-                      <p className="text-xs text-slate-500">
-                        Primary Blocker
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-200">
-                        {row.primary_blocker ?? "None"}
-                      </p>
+                    <div className="lg:col-span-3 text-sm font-semibold text-slate-200">
+                      {row.primary_blocker ?? "None"}
                     </div>
 
-                    <div className="lg:col-span-2">
-                      <p className="text-xs text-slate-500">Value</p>
-                      <p className="mt-1 text-lg font-bold text-white">
-                        {formatMonthlyValue(row.monthly_value)}
-                      </p>
+                    <div className="lg:col-span-2 text-lg font-bold text-white">
+                      {formatMonthlyValue(row.monthly_value)}
                     </div>
                   </div>
 
                   <div className="mt-5 h-3 rounded-full bg-slate-800">
                     <div
-                      className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_18px_rgba(34,211,238,0.35)]"
+                      className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400"
                       style={{ width: `${row.readiness_score}%` }}
                     />
                   </div>
@@ -793,10 +739,6 @@ function DashboardPage({
             </h2>
           </div>
 
-          <p className="mt-1 text-sm text-slate-400">
-            Priority next steps for customer deployment momentum.
-          </p>
-
           <div className="mt-7 space-y-4">
             {upcomingActions.map((action, index) => (
               <div key={action} className={`${glass} flex gap-4 p-4`}>
@@ -809,21 +751,6 @@ function DashboardPage({
                 </p>
               </div>
             ))}
-          </div>
-
-          <div className="mt-6 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">
-              Phase 5 Status
-            </p>
-
-            <p className="mt-2 text-lg font-bold text-white">
-              Customer CRUD complete
-            </p>
-
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              Customer records can now be created, read, updated, and deleted
-              through Supabase.
-            </p>
           </div>
         </div>
       </section>
@@ -1049,7 +976,9 @@ function CustomersPage({
           </div>
         </div>
 
-        {(searchTerm || stageFilter !== "All Stages" || healthFilter !== "All Health") && (
+        {(searchTerm ||
+          stageFilter !== "All Stages" ||
+          healthFilter !== "All Health") && (
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/50 p-4">
             <p className="text-sm text-slate-400">
               Showing{" "}
@@ -1076,6 +1005,401 @@ function CustomersPage({
   );
 }
 
+function DeploymentsPage({
+  deployments,
+  isLoading,
+  loadError,
+}: {
+  deployments: Deployment[];
+  isLoading: boolean;
+  loadError: string | null;
+}) {
+  const productionCount = deployments.filter(
+    (deployment) => deployment.stage === "Production"
+  ).length;
+
+  const reviewCount = deployments.filter(
+    (deployment) =>
+      deployment.stage === "Security Review" ||
+      deployment.security_status === "In Review"
+  ).length;
+
+  const averageReadiness =
+    deployments.length === 0
+      ? 0
+      : Math.round(
+          deployments.reduce(
+            (total, deployment) => total + deployment.technical_readiness,
+            0
+          ) / deployments.length
+        );
+
+  return (
+    <section className="mt-8">
+      <p className="text-sm font-bold uppercase tracking-[0.32em] text-cyan-300">
+        Deployment Operations
+      </p>
+
+      <div className="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h1 className="text-5xl font-bold tracking-tight text-white">
+            Deployments
+          </h1>
+          <p className="mt-4 max-w-4xl leading-8 text-slate-300">
+            Track enterprise AI deployment stages, technical readiness, security
+            posture, integration progress, ownership, and go-live movement.
+          </p>
+        </div>
+
+        <StatusPill tone="emerald">{deployments.length} Deployments</StatusPill>
+      </div>
+
+      <section className="mt-7 grid gap-5 md:grid-cols-3">
+        <div className={`${panel} p-5`}>
+          <p className="text-sm text-slate-400">Average Technical Readiness</p>
+          <p className="mt-2 text-3xl font-bold text-cyan-300">
+            {averageReadiness}%
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            across active customer deployments
+          </p>
+        </div>
+
+        <div className={`${panel} p-5`}>
+          <p className="text-sm text-slate-400">Production Deployments</p>
+          <p className="mt-2 text-3xl font-bold text-emerald-300">
+            {productionCount}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            validated workflows in production
+          </p>
+        </div>
+
+        <div className={`${panel} p-5`}>
+          <p className="text-sm text-slate-400">Security / Review Work</p>
+          <p className="mt-2 text-3xl font-bold text-amber-300">
+            {reviewCount}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            deployments requiring governance attention
+          </p>
+        </div>
+      </section>
+
+      <div className={`${panel} mt-7 p-6`}>
+        <h2 className="text-2xl font-bold text-white">Deployment Pipeline</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Live deployment records loaded from Supabase.
+        </p>
+
+        <div className="mt-7 space-y-4">
+          {isLoading && (
+            <div className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5 text-slate-300">
+              Loading deployment records from Supabase...
+            </div>
+          )}
+
+          {loadError && (
+            <div className="rounded-3xl border border-rose-400/30 bg-rose-400/10 p-5 text-rose-200">
+              Supabase error: {loadError}
+            </div>
+          )}
+
+          {!isLoading &&
+            !loadError &&
+            deployments.map((deployment) => (
+              <div
+                key={deployment.id}
+                className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5"
+              >
+                <div className="grid gap-5 xl:grid-cols-12 xl:items-center">
+                  <div className="xl:col-span-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      Customer
+                    </p>
+                    <h3 className="mt-2 text-lg font-bold text-white">
+                      {deployment.customers?.company_name ?? "Unknown Customer"}
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {deployment.customers?.industry ?? "No industry listed"}
+                    </p>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">Stage</p>
+                    <div className="mt-2">
+                      <StatusPill tone={getStageTone(deployment.stage)}>
+                        {deployment.stage}
+                      </StatusPill>
+                    </div>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">
+                      Technical Readiness
+                    </p>
+                    <p className="mt-1 text-2xl font-bold text-cyan-300">
+                      {deployment.technical_readiness}%
+                    </p>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">Security</p>
+                    <p className="mt-1 font-semibold text-slate-200">
+                      {deployment.security_status}
+                    </p>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">Integration</p>
+                    <p className="mt-1 font-semibold text-slate-200">
+                      {deployment.integration_status}
+                    </p>
+                  </div>
+
+                  <div className="xl:col-span-1">
+                    <p className="text-xs text-slate-500">Owner</p>
+                    <p className="mt-1 font-semibold text-white">
+                      {deployment.owner}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 h-3 rounded-full bg-slate-800">
+                  <div
+                    className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_18px_rgba(34,211,238,0.35)]"
+                    style={{ width: `${deployment.technical_readiness}%` }}
+                  />
+                </div>
+
+                <div className="mt-5 rounded-2xl border border-slate-700/70 bg-slate-950/60 p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                    Next Action
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-200">
+                    {deployment.next_action || "No next action listed."}
+                  </p>
+                </div>
+              </div>
+            ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function UseCasesPage({
+  useCases,
+  isLoading,
+  loadError,
+}: {
+  useCases: UseCase[];
+  isLoading: boolean;
+  loadError: string | null;
+}) {
+  const productionCount = useCases.filter(
+    (useCase) => useCase.stage === "Production"
+  ).length;
+
+  const pilotCount = useCases.filter((useCase) => useCase.stage === "Pilot")
+    .length;
+
+  const totalMonthlyValue = useCases.reduce(
+    (total, useCase) => total + Number(useCase.monthly_value ?? 0),
+    0
+  );
+
+  const averageConfidence =
+    useCases.length === 0
+      ? 0
+      : Math.round(
+          useCases.reduce(
+            (total, useCase) => total + useCase.confidence_score,
+            0
+          ) / useCases.length
+        );
+
+  return (
+    <section className="mt-8">
+      <p className="text-sm font-bold uppercase tracking-[0.32em] text-cyan-300">
+        Workflow Activation
+      </p>
+
+      <div className="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h1 className="text-5xl font-bold tracking-tight text-white">
+            Use Cases
+          </h1>
+          <p className="mt-4 max-w-4xl leading-8 text-slate-300">
+            Track AI workflow activation across customers, business owners,
+            maturity stages, confidence, risk, next milestones, and measurable
+            monthly value.
+          </p>
+        </div>
+
+        <StatusPill tone="emerald">{useCases.length} Use Cases</StatusPill>
+      </div>
+
+      <section className="mt-7 grid gap-5 md:grid-cols-4">
+        <div className={`${panel} p-5`}>
+          <p className="text-sm text-slate-400">Monthly Use Case Value</p>
+          <p className="mt-2 text-3xl font-bold text-emerald-300">
+            {formatMonthlyValue(totalMonthlyValue)}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            combined workflow value
+          </p>
+        </div>
+
+        <div className={`${panel} p-5`}>
+          <p className="text-sm text-slate-400">Average Confidence</p>
+          <p className="mt-2 text-3xl font-bold text-cyan-300">
+            {averageConfidence}%
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            across active use cases
+          </p>
+        </div>
+
+        <div className={`${panel} p-5`}>
+          <p className="text-sm text-slate-400">Production</p>
+          <p className="mt-2 text-3xl font-bold text-emerald-300">
+            {productionCount}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            workflows producing value
+          </p>
+        </div>
+
+        <div className={`${panel} p-5`}>
+          <p className="text-sm text-slate-400">Pilot</p>
+          <p className="mt-2 text-3xl font-bold text-cyan-300">
+            {pilotCount}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            workflows in validation
+          </p>
+        </div>
+      </section>
+
+      <div className={`${panel} mt-7 p-6`}>
+        <h2 className="text-2xl font-bold text-white">
+          AI Use Case Activation Pipeline
+        </h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Live workflow records loaded from Supabase.
+        </p>
+
+        <div className="mt-7 space-y-4">
+          {isLoading && (
+            <div className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5 text-slate-300">
+              Loading use case records from Supabase...
+            </div>
+          )}
+
+          {loadError && (
+            <div className="rounded-3xl border border-rose-400/30 bg-rose-400/10 p-5 text-rose-200">
+              Supabase error: {loadError}
+            </div>
+          )}
+
+          {!isLoading &&
+            !loadError &&
+            useCases.map((useCase) => (
+              <div
+                key={useCase.id}
+                className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5"
+              >
+                <div className="grid gap-5 xl:grid-cols-12 xl:items-center">
+                  <div className="xl:col-span-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      Use Case
+                    </p>
+                    <h3 className="mt-2 text-lg font-bold text-white">
+                      {useCase.name}
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {useCase.customers?.company_name ?? "Unknown Customer"}
+                    </p>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">Stage</p>
+                    <div className="mt-2">
+                      <StatusPill tone={getStageTone(useCase.stage)}>
+                        {useCase.stage}
+                      </StatusPill>
+                    </div>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">Value</p>
+                    <p className="mt-1 text-lg font-bold text-white">
+                      {formatMonthlyValue(useCase.monthly_value)}
+                    </p>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">Confidence</p>
+                    <p className="mt-1 text-2xl font-bold text-cyan-300">
+                      {useCase.confidence_score}%
+                    </p>
+                  </div>
+
+                  <div className="xl:col-span-1">
+                    <p className="text-xs text-slate-500">Risk</p>
+                    <div className="mt-2">
+                      <StatusPill tone={getRiskTone(useCase.risk_level)}>
+                        {useCase.risk_level}
+                      </StatusPill>
+                    </div>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">Owner</p>
+                    <p className="mt-1 font-semibold text-slate-200">
+                      {useCase.business_owner}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 h-3 rounded-full bg-slate-800">
+                  <div
+                    className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_18px_rgba(34,211,238,0.35)]"
+                    style={{ width: `${useCase.confidence_score}%` }}
+                  />
+                </div>
+
+                <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-700/70 bg-slate-950/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      Workflow Detail
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
+                      {useCase.workflow_detail}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-700/70 bg-slate-950/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      Next Milestone
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
+                      {useCase.next_milestone}
+                    </p>
+                    <p className="mt-3 text-xs text-slate-500">
+                      Technical Owner: {useCase.technical_owner}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -1085,8 +1409,14 @@ function App() {
     null
   );
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [deployments, setDeployments] = useState<Deployment[]>([]);
+  const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeploymentsLoading, setIsDeploymentsLoading] = useState(true);
+  const [isUseCasesLoading, setIsUseCasesLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [deploymentsError, setDeploymentsError] = useState<string | null>(null);
+  const [useCasesError, setUseCasesError] = useState<string | null>(null);
   const [deletingCustomerId, setDeletingCustomerId] = useState<string | null>(
     null
   );
@@ -1109,6 +1439,62 @@ function App() {
     }
 
     loadCustomers();
+  }, []);
+
+  useEffect(() => {
+    async function loadDeployments() {
+      const { data, error } = await supabase
+        .from("deployments")
+        .select(
+          `
+          *,
+          customers (
+            company_name,
+            industry
+          )
+        `
+        )
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        setDeploymentsError(error.message);
+        setIsDeploymentsLoading(false);
+        return;
+      }
+
+      setDeployments((data ?? []) as Deployment[]);
+      setIsDeploymentsLoading(false);
+    }
+
+    loadDeployments();
+  }, []);
+
+  useEffect(() => {
+    async function loadUseCases() {
+      const { data, error } = await supabase
+        .from("use_cases")
+        .select(
+          `
+          *,
+          customers (
+            company_name,
+            industry
+          )
+        `
+        )
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        setUseCasesError(error.message);
+        setIsUseCasesLoading(false);
+        return;
+      }
+
+      setUseCases((data ?? []) as UseCase[]);
+      setIsUseCasesLoading(false);
+    }
+
+    loadUseCases();
   }, []);
 
   const dashboardMetrics = useMemo(() => {
@@ -1229,6 +1615,18 @@ function App() {
             onOpenEditCustomer={openEditCustomer}
             onDeleteCustomer={handleDeleteCustomer}
             deletingCustomerId={deletingCustomerId}
+          />
+        ) : activePage === "Deployments" ? (
+          <DeploymentsPage
+            deployments={deployments}
+            isLoading={isDeploymentsLoading}
+            loadError={deploymentsError}
+          />
+        ) : activePage === "Use Cases" ? (
+          <UseCasesPage
+            useCases={useCases}
+            isLoading={isUseCasesLoading}
+            loadError={useCasesError}
           />
         ) : (
           <DashboardPage
