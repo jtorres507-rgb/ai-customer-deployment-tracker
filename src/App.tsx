@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState, type ElementType, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ElementType,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { supabase } from "./lib/supabase";
 import type { Customer } from "./types/customer";
 
@@ -24,6 +31,18 @@ import {
 } from "lucide-react";
 
 type Tone = "cyan" | "emerald" | "amber" | "rose" | "slate";
+
+type CustomerFormData = {
+  company_name: string;
+  industry: string;
+  account_owner: string;
+  health_status: string;
+  deployment_stage: string;
+  readiness_score: number;
+  monthly_value: number;
+  primary_blocker: string;
+  next_action: string;
+};
 
 const panel =
   "rounded-3xl border border-slate-700/70 bg-slate-900/70 shadow-[0_20px_70px_rgba(0,0,0,0.35)] backdrop-blur-xl";
@@ -262,6 +281,288 @@ function MetricCard({
   );
 }
 
+function AddCustomerModal({
+  isOpen,
+  onClose,
+  onCustomerCreated,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onCustomerCreated: (customer: Customer) => void;
+}) {
+  const [formData, setFormData] = useState<CustomerFormData>({
+    company_name: "",
+    industry: "",
+    account_owner: "",
+    health_status: "Healthy",
+    deployment_stage: "Discovery",
+    readiness_score: 50,
+    monthly_value: 0,
+    primary_blocker: "None",
+    next_action: "",
+  });
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  if (!isOpen) return null;
+
+  function updateField<K extends keyof CustomerFormData>(
+    field: K,
+    value: CustomerFormData[K]
+  ) {
+    setFormData((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError(null);
+
+    if (!formData.company_name.trim()) {
+      setFormError("Company name is required.");
+      return;
+    }
+
+    if (!formData.industry.trim()) {
+      setFormError("Industry is required.");
+      return;
+    }
+
+    if (!formData.account_owner.trim()) {
+      setFormError("Account owner is required.");
+      return;
+    }
+
+    setIsSaving(true);
+
+    const { data, error } = await supabase
+      .from("customers")
+      .insert({
+        company_name: formData.company_name,
+        industry: formData.industry,
+        account_owner: formData.account_owner,
+        health_status: formData.health_status,
+        deployment_stage: formData.deployment_stage,
+        readiness_score: formData.readiness_score,
+        monthly_value: formData.monthly_value,
+        primary_blocker: formData.primary_blocker || "None",
+        next_action: formData.next_action,
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      setFormError(error.message);
+      setIsSaving(false);
+      return;
+    }
+
+    onCustomerCreated(data as Customer);
+
+    setFormData({
+      company_name: "",
+      industry: "",
+      account_owner: "",
+      health_status: "Healthy",
+      deployment_stage: "Discovery",
+      readiness_score: 50,
+      monthly_value: 0,
+      primary_blocker: "None",
+      next_action: "",
+    });
+
+    setIsSaving(false);
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-5 backdrop-blur-md">
+      <div className={`${panel} max-h-[90vh] w-full max-w-4xl overflow-y-auto p-6`}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.28em] text-cyan-300">
+              New Customer Deployment
+            </p>
+            <h2 className="mt-2 text-3xl font-bold text-white">
+              Add Customer
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              Create a new enterprise AI customer deployment record in Supabase.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-bold text-slate-300 transition hover:bg-slate-800"
+          >
+            Close
+          </button>
+        </div>
+
+        {formError && (
+          <div className="mt-5 rounded-2xl border border-rose-400/30 bg-rose-400/10 p-4 text-sm font-semibold text-rose-200">
+            {formError}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="mt-7 grid gap-5 md:grid-cols-2">
+          <div>
+            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+              Company Name
+            </label>
+            <input
+              value={formData.company_name}
+              onChange={(event) => updateField("company_name", event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+              placeholder="Example: Acme Global Corp."
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+              Industry
+            </label>
+            <input
+              value={formData.industry}
+              onChange={(event) => updateField("industry", event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+              placeholder="Example: Logistics"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+              Account Owner
+            </label>
+            <input
+              value={formData.account_owner}
+              onChange={(event) => updateField("account_owner", event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+              placeholder="Example: AI Success"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+              Health Status
+            </label>
+            <select
+              value={formData.health_status}
+              onChange={(event) => updateField("health_status", event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+            >
+              <option>Healthy</option>
+              <option>At Risk</option>
+              <option>Blocked</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+              Deployment Stage
+            </label>
+            <select
+              value={formData.deployment_stage}
+              onChange={(event) =>
+                updateField("deployment_stage", event.target.value)
+              }
+              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+            >
+              <option>Discovery</option>
+              <option>Readiness Review</option>
+              <option>Security Review</option>
+              <option>Pilot</option>
+              <option>Production</option>
+              <option>Expansion</option>
+              <option>Blocked</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+              Readiness Score
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={formData.readiness_score}
+              onChange={(event) =>
+                updateField("readiness_score", Number(event.target.value))
+              }
+              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+              Monthly Value
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={formData.monthly_value}
+              onChange={(event) =>
+                updateField("monthly_value", Number(event.target.value))
+              }
+              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+              placeholder="Example: 50000"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+              Primary Blocker
+            </label>
+            <input
+              value={formData.primary_blocker}
+              onChange={(event) =>
+                updateField("primary_blocker", event.target.value)
+              }
+              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+              placeholder="Example: None"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+              Next Action
+            </label>
+            <textarea
+              value={formData.next_action}
+              onChange={(event) => updateField("next_action", event.target.value)}
+              className="mt-2 min-h-28 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+              placeholder="Example: Schedule technical readiness review"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 md:col-span-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-2xl border border-slate-700 bg-slate-950 px-5 py-3 text-sm font-bold text-slate-300 transition hover:bg-slate-800"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSaving ? "Saving..." : "Create Customer"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function DashboardPage({
   customers,
   dashboardMetrics,
@@ -329,10 +630,6 @@ function DashboardPage({
                 Live customer deployment records loaded from Supabase.
               </p>
             </div>
-
-            <button className="rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300">
-              + Add Customer
-            </button>
           </div>
 
           <div className="mt-7 space-y-4">
@@ -440,16 +737,16 @@ function DashboardPage({
 
           <div className="mt-6 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">
-              Phase 4 Status
+              Phase 5 Status
             </p>
 
             <p className="mt-2 text-lg font-bold text-white">
-              Supabase connection active
+              Customer CRUD started
             </p>
 
             <p className="mt-2 text-sm leading-6 text-slate-300">
-              Customer deployment rows are now loading from the live Supabase
-              customers table.
+              The dashboard reads live customer data, and the customer page can
+              create new records in Supabase.
             </p>
           </div>
         </div>
@@ -458,7 +755,13 @@ function DashboardPage({
   );
 }
 
-function CustomersPage({ customers }: { customers: Customer[] }) {
+function CustomersPage({
+  customers,
+  onOpenAddCustomer,
+}: {
+  customers: Customer[];
+  onOpenAddCustomer: () => void;
+}) {
   return (
     <section className="mt-8">
       <p className="text-sm font-bold uppercase tracking-[0.32em] text-cyan-300">
@@ -476,7 +779,10 @@ function CustomersPage({ customers }: { customers: Customer[] }) {
           </p>
         </div>
 
-        <button className="rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300">
+        <button
+          onClick={onOpenAddCustomer}
+          className="rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
+        >
           + Add Customer
         </button>
       </div>
@@ -554,6 +860,7 @@ function CustomersPage({ customers }: { customers: Customer[] }) {
 
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
+  const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -631,6 +938,10 @@ function App() {
     ];
   }, [customers]);
 
+  function handleCustomerCreated(customer: Customer) {
+    setCustomers((current) => [...current, customer]);
+  }
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.15),transparent_32%),linear-gradient(135deg,#020617,#0f172a_45%,#020617)] text-white xl:flex">
       <Sidebar activePage={activePage} setActivePage={setActivePage} />
@@ -639,7 +950,10 @@ function App() {
         <TopBar />
 
         {activePage === "Customers" ? (
-          <CustomersPage customers={customers} />
+          <CustomersPage
+            customers={customers}
+            onOpenAddCustomer={() => setIsAddCustomerOpen(true)}
+          />
         ) : (
           <DashboardPage
             customers={customers}
@@ -648,6 +962,12 @@ function App() {
             loadError={loadError}
           />
         )}
+
+        <AddCustomerModal
+          isOpen={isAddCustomerOpen}
+          onClose={() => setIsAddCustomerOpen(false)}
+          onCustomerCreated={handleCustomerCreated}
+        />
       </main>
     </div>
   );
