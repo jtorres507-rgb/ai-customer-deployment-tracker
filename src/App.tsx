@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ElementType, type ReactNode } from "react";
 import { supabase } from "./lib/supabase";
 import type { Customer } from "./types/customer";
 
@@ -57,6 +57,13 @@ function getStageTone(stage: string): Tone {
   return "slate";
 }
 
+function getHealthTone(health: string): Tone {
+  if (health === "Healthy") return "emerald";
+  if (health === "Blocked") return "rose";
+  if (health === "At Risk") return "amber";
+  return "slate";
+}
+
 function formatMonthlyValue(value: number) {
   return `$${Math.round(Number(value ?? 0) / 1000)}K/mo`;
 }
@@ -85,7 +92,13 @@ function StatusPill({
   );
 }
 
-function Sidebar() {
+function Sidebar({
+  activePage,
+  setActivePage,
+}: {
+  activePage: string;
+  setActivePage: (page: string) => void;
+}) {
   return (
     <aside className="hidden min-h-screen w-[300px] shrink-0 border-r border-slate-800 bg-slate-950 p-4 xl:block">
       <div className={`${panel} min-h-[calc(100vh-2rem)] p-4`}>
@@ -115,13 +128,14 @@ function Sidebar() {
           </div>
 
           <div className="space-y-1">
-            {navItems.map((item, index) => {
+            {navItems.map((item) => {
               const Icon = item.icon;
-              const active = index === 0;
+              const active = item.name === activePage;
 
               return (
                 <button
                   key={item.name}
+                  onClick={() => setActivePage(item.name)}
                   className={`flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left text-sm font-semibold transition ${
                     active
                       ? "border border-cyan-400/30 bg-cyan-400/10 text-white"
@@ -223,7 +237,7 @@ function MetricCard({
     value: string;
     change: string;
     detail: string;
-    icon: React.ElementType;
+    icon: ElementType;
     tone: Tone;
   };
 }) {
@@ -248,7 +262,298 @@ function MetricCard({
   );
 }
 
+function DashboardPage({
+  customers,
+  dashboardMetrics,
+  isLoading,
+  loadError,
+}: {
+  customers: Customer[];
+  dashboardMetrics: {
+    label: string;
+    value: string;
+    change: string;
+    detail: string;
+    icon: ElementType;
+    tone: Tone;
+  }[];
+  isLoading: boolean;
+  loadError: string | null;
+}) {
+  return (
+    <>
+      <section className="mt-8">
+        <p className="text-sm font-bold uppercase tracking-[0.32em] text-cyan-300">
+          AI Customer Deployment Tracker
+        </p>
+
+        <div className="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <h1 className="text-5xl font-bold tracking-tight text-white">
+              Deployment Operations Dashboard
+            </h1>
+
+            <p className="mt-4 max-w-4xl leading-8 text-slate-300">
+              Manage enterprise AI customer deployments, readiness scoring,
+              blockers, stakeholders, use cases, and value realization from one
+              full-stack operations workspace.
+            </p>
+          </div>
+
+          <div className={`${glass} flex items-center gap-3 px-4 py-3`}>
+            <Database size={18} className="text-cyan-300" />
+            <div>
+              <p className="text-xs text-slate-500">Data Layer</p>
+              <p className="text-sm font-bold text-white">
+                Supabase connected
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {dashboardMetrics.map((item) => (
+          <MetricCard key={item.label} item={item} />
+        ))}
+      </section>
+
+      <section className="mt-6 grid gap-6 xl:grid-cols-12">
+        <div className={`${panel} xl:col-span-8 p-6`}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-white">
+                Active Customer Deployments
+              </h2>
+              <p className="mt-1 text-sm text-slate-400">
+                Live customer deployment records loaded from Supabase.
+              </p>
+            </div>
+
+            <button className="rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300">
+              + Add Customer
+            </button>
+          </div>
+
+          <div className="mt-7 space-y-4">
+            {isLoading && (
+              <div className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5 text-slate-300">
+                Loading customer deployment records from Supabase...
+              </div>
+            )}
+
+            {loadError && (
+              <div className="rounded-3xl border border-rose-400/30 bg-rose-400/10 p-5 text-rose-200">
+                Supabase error: {loadError}
+              </div>
+            )}
+
+            {!isLoading &&
+              !loadError &&
+              customers.map((row) => (
+                <div
+                  key={row.id}
+                  className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5"
+                >
+                  <div className="grid gap-5 lg:grid-cols-12 lg:items-center">
+                    <div className="lg:col-span-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                        Customer
+                      </p>
+                      <h3 className="mt-2 text-lg font-bold text-white">
+                        {row.company_name}
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Owner: {row.account_owner}
+                      </p>
+                    </div>
+
+                    <div className="lg:col-span-2">
+                      <p className="text-xs text-slate-500">Stage</p>
+                      <div className="mt-2">
+                        <StatusPill tone={getStageTone(row.deployment_stage)}>
+                          {row.deployment_stage}
+                        </StatusPill>
+                      </div>
+                    </div>
+
+                    <div className="lg:col-span-2">
+                      <p className="text-xs text-slate-500">Readiness</p>
+                      <p className="mt-1 text-2xl font-bold text-cyan-300">
+                        {row.readiness_score}%
+                      </p>
+                    </div>
+
+                    <div className="lg:col-span-3">
+                      <p className="text-xs text-slate-500">
+                        Primary Blocker
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-200">
+                        {row.primary_blocker ?? "None"}
+                      </p>
+                    </div>
+
+                    <div className="lg:col-span-2">
+                      <p className="text-xs text-slate-500">Value</p>
+                      <p className="mt-1 text-lg font-bold text-white">
+                        {formatMonthlyValue(row.monthly_value)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 h-3 rounded-full bg-slate-800">
+                    <div
+                      className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_18px_rgba(34,211,238,0.35)]"
+                      style={{ width: `${row.readiness_score}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+
+        <div className={`${panel} xl:col-span-4 p-6`}>
+          <div className="flex items-center gap-3">
+            <Activity className="text-emerald-300" size={24} />
+            <h2 className="text-2xl font-bold text-white">
+              Upcoming Actions
+            </h2>
+          </div>
+
+          <p className="mt-1 text-sm text-slate-400">
+            Priority next steps for customer deployment momentum.
+          </p>
+
+          <div className="mt-7 space-y-4">
+            {upcomingActions.map((action, index) => (
+              <div key={action} className={`${glass} flex gap-4 p-4`}>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 text-sm font-bold text-emerald-300">
+                  {index + 1}
+                </div>
+
+                <p className="text-sm font-semibold leading-6 text-slate-200">
+                  {action}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">
+              Phase 4 Status
+            </p>
+
+            <p className="mt-2 text-lg font-bold text-white">
+              Supabase connection active
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              Customer deployment rows are now loading from the live Supabase
+              customers table.
+            </p>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function CustomersPage({ customers }: { customers: Customer[] }) {
+  return (
+    <section className="mt-8">
+      <p className="text-sm font-bold uppercase tracking-[0.32em] text-cyan-300">
+        Customer Records
+      </p>
+
+      <div className="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h1 className="text-5xl font-bold tracking-tight text-white">
+            Customers
+          </h1>
+          <p className="mt-4 max-w-4xl leading-8 text-slate-300">
+            Manage enterprise AI customer accounts, deployment stages, readiness
+            scores, health status, blockers, and value realization records.
+          </p>
+        </div>
+
+        <button className="rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300">
+          + Add Customer
+        </button>
+      </div>
+
+      <div className={`${panel} mt-7 p-6`}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-white">
+              Customer Deployment Table
+            </h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Live customer records loaded from Supabase.
+            </p>
+          </div>
+
+          <StatusPill tone="emerald">{customers.length} Records</StatusPill>
+        </div>
+
+        <div className="mt-7 overflow-hidden rounded-3xl border border-slate-700/70">
+          <div className="grid grid-cols-12 bg-slate-950/80 px-5 py-4 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+            <div className="col-span-3">Customer</div>
+            <div className="col-span-2">Industry</div>
+            <div className="col-span-2">Stage</div>
+            <div className="col-span-1">Score</div>
+            <div className="col-span-2">Health</div>
+            <div className="col-span-2">Monthly Value</div>
+          </div>
+
+          <div className="divide-y divide-slate-800">
+            {customers.map((customer) => (
+              <div
+                key={customer.id}
+                className="grid grid-cols-12 items-center px-5 py-5 text-sm transition hover:bg-slate-800/40"
+              >
+                <div className="col-span-3">
+                  <p className="font-bold text-white">
+                    {customer.company_name}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Owner: {customer.account_owner}
+                  </p>
+                </div>
+
+                <div className="col-span-2 text-slate-300">
+                  {customer.industry}
+                </div>
+
+                <div className="col-span-2">
+                  <StatusPill tone={getStageTone(customer.deployment_stage)}>
+                    {customer.deployment_stage}
+                  </StatusPill>
+                </div>
+
+                <div className="col-span-1 text-lg font-bold text-cyan-300">
+                  {customer.readiness_score}%
+                </div>
+
+                <div className="col-span-2">
+                  <StatusPill tone={getHealthTone(customer.health_status)}>
+                    {customer.health_status}
+                  </StatusPill>
+                </div>
+
+                <div className="col-span-2 font-bold text-white">
+                  {formatMonthlyValue(customer.monthly_value)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function App() {
+  const [activePage, setActivePage] = useState("Dashboard");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -328,183 +633,21 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.15),transparent_32%),linear-gradient(135deg,#020617,#0f172a_45%,#020617)] text-white xl:flex">
-      <Sidebar />
+      <Sidebar activePage={activePage} setActivePage={setActivePage} />
 
       <main className="min-w-0 flex-1 p-5 lg:p-8">
         <TopBar />
 
-        <section className="mt-8">
-          <p className="text-sm font-bold uppercase tracking-[0.32em] text-cyan-300">
-            AI Customer Deployment Tracker
-          </p>
-
-          <div className="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-              <h1 className="text-5xl font-bold tracking-tight text-white">
-                Deployment Operations Dashboard
-              </h1>
-
-              <p className="mt-4 max-w-4xl leading-8 text-slate-300">
-                Manage enterprise AI customer deployments, readiness scoring,
-                blockers, stakeholders, use cases, and value realization from one
-                full-stack operations workspace.
-              </p>
-            </div>
-
-            <div className={`${glass} flex items-center gap-3 px-4 py-3`}>
-              <Database size={18} className="text-cyan-300" />
-              <div>
-                <p className="text-xs text-slate-500">Data Layer</p>
-                <p className="text-sm font-bold text-white">
-                  Supabase connected
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          {dashboardMetrics.map((item) => (
-            <MetricCard key={item.label} item={item} />
-          ))}
-        </section>
-
-        <section className="mt-6 grid gap-6 xl:grid-cols-12">
-          <div className={`${panel} xl:col-span-8 p-6`}>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white">
-                  Active Customer Deployments
-                </h2>
-                <p className="mt-1 text-sm text-slate-400">
-                  Live customer deployment records loaded from Supabase.
-                </p>
-              </div>
-
-              <button className="rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300">
-                + Add Customer
-              </button>
-            </div>
-
-            <div className="mt-7 space-y-4">
-              {isLoading && (
-                <div className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5 text-slate-300">
-                  Loading customer deployment records from Supabase...
-                </div>
-              )}
-
-              {loadError && (
-                <div className="rounded-3xl border border-rose-400/30 bg-rose-400/10 p-5 text-rose-200">
-                  Supabase error: {loadError}
-                </div>
-              )}
-
-              {!isLoading &&
-                !loadError &&
-                customers.map((row) => (
-                  <div
-                    key={row.id}
-                    className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5"
-                  >
-                    <div className="grid gap-5 lg:grid-cols-12 lg:items-center">
-                      <div className="lg:col-span-3">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-                          Customer
-                        </p>
-                        <h3 className="mt-2 text-lg font-bold text-white">
-                          {row.company_name}
-                        </h3>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Owner: {row.account_owner}
-                        </p>
-                      </div>
-
-                      <div className="lg:col-span-2">
-                        <p className="text-xs text-slate-500">Stage</p>
-                        <div className="mt-2">
-                          <StatusPill tone={getStageTone(row.deployment_stage)}>
-                            {row.deployment_stage}
-                          </StatusPill>
-                        </div>
-                      </div>
-
-                      <div className="lg:col-span-2">
-                        <p className="text-xs text-slate-500">Readiness</p>
-                        <p className="mt-1 text-2xl font-bold text-cyan-300">
-                          {row.readiness_score}%
-                        </p>
-                      </div>
-
-                      <div className="lg:col-span-3">
-                        <p className="text-xs text-slate-500">
-                          Primary Blocker
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-slate-200">
-                          {row.primary_blocker ?? "None"}
-                        </p>
-                      </div>
-
-                      <div className="lg:col-span-2">
-                        <p className="text-xs text-slate-500">Value</p>
-                        <p className="mt-1 text-lg font-bold text-white">
-                          {formatMonthlyValue(row.monthly_value)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 h-3 rounded-full bg-slate-800">
-                      <div
-                        className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_18px_rgba(34,211,238,0.35)]"
-                        style={{ width: `${row.readiness_score}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
-
-          <div className={`${panel} xl:col-span-4 p-6`}>
-            <div className="flex items-center gap-3">
-              <Activity className="text-emerald-300" size={24} />
-              <h2 className="text-2xl font-bold text-white">
-                Upcoming Actions
-              </h2>
-            </div>
-
-            <p className="mt-1 text-sm text-slate-400">
-              Priority next steps for customer deployment momentum.
-            </p>
-
-            <div className="mt-7 space-y-4">
-              {upcomingActions.map((action, index) => (
-                <div key={action} className={`${glass} flex gap-4 p-4`}>
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 text-sm font-bold text-emerald-300">
-                    {index + 1}
-                  </div>
-
-                  <p className="text-sm font-semibold leading-6 text-slate-200">
-                    {action}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">
-                Phase 4 Status
-              </p>
-
-              <p className="mt-2 text-lg font-bold text-white">
-                Supabase connection active
-              </p>
-
-              <p className="mt-2 text-sm leading-6 text-slate-300">
-                Customer deployment rows are now loading from the live Supabase
-                customers table.
-              </p>
-            </div>
-          </div>
-        </section>
+        {activePage === "Customers" ? (
+          <CustomersPage customers={customers} />
+        ) : (
+          <DashboardPage
+            customers={customers}
+            dashboardMetrics={dashboardMetrics}
+            isLoading={isLoading}
+            loadError={loadError}
+          />
+        )}
       </main>
     </div>
   );
