@@ -281,14 +281,20 @@ function MetricCard({
   );
 }
 
-function AddCustomerModal({
+function CustomerFormModal({
+  mode,
+  customer,
   isOpen,
   onClose,
   onCustomerCreated,
+  onCustomerUpdated,
 }: {
+  mode: "create" | "edit";
+  customer?: Customer | null;
   isOpen: boolean;
   onClose: () => void;
   onCustomerCreated: (customer: Customer) => void;
+  onCustomerUpdated: (customer: Customer) => void;
 }) {
   const [formData, setFormData] = useState<CustomerFormData>({
     company_name: "",
@@ -304,6 +310,38 @@ function AddCustomerModal({
 
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (mode === "edit" && customer) {
+      setFormData({
+        company_name: customer.company_name,
+        industry: customer.industry,
+        account_owner: customer.account_owner,
+        health_status: customer.health_status,
+        deployment_stage: customer.deployment_stage,
+        readiness_score: customer.readiness_score,
+        monthly_value: customer.monthly_value,
+        primary_blocker: customer.primary_blocker ?? "None",
+        next_action: customer.next_action ?? "",
+      });
+    }
+
+    if (mode === "create") {
+      setFormData({
+        company_name: "",
+        industry: "",
+        account_owner: "",
+        health_status: "Healthy",
+        deployment_stage: "Discovery",
+        readiness_score: 50,
+        monthly_value: 0,
+        primary_blocker: "None",
+        next_action: "",
+      });
+    }
+
+    setFormError(null);
+  }, [mode, customer, isOpen]);
 
   if (!isOpen) return null;
 
@@ -338,59 +376,93 @@ function AddCustomerModal({
 
     setIsSaving(true);
 
-    const { data, error } = await supabase
-      .from("customers")
-      .insert({
-        company_name: formData.company_name,
-        industry: formData.industry,
-        account_owner: formData.account_owner,
-        health_status: formData.health_status,
-        deployment_stage: formData.deployment_stage,
-        readiness_score: formData.readiness_score,
-        monthly_value: formData.monthly_value,
-        primary_blocker: formData.primary_blocker || "None",
-        next_action: formData.next_action,
-      })
-      .select("*")
-      .single();
+    if (mode === "create") {
+      const { data, error } = await supabase
+        .from("customers")
+        .insert({
+          company_name: formData.company_name,
+          industry: formData.industry,
+          account_owner: formData.account_owner,
+          health_status: formData.health_status,
+          deployment_stage: formData.deployment_stage,
+          readiness_score: formData.readiness_score,
+          monthly_value: formData.monthly_value,
+          primary_blocker: formData.primary_blocker || "None",
+          next_action: formData.next_action,
+        })
+        .select("*")
+        .single();
 
-    if (error) {
-      setFormError(error.message);
+      if (error) {
+        setFormError(error.message);
+        setIsSaving(false);
+        return;
+      }
+
+      onCustomerCreated(data as Customer);
       setIsSaving(false);
+      onClose();
       return;
     }
 
-    onCustomerCreated(data as Customer);
+    if (mode === "edit" && customer) {
+      const { data, error } = await supabase
+        .from("customers")
+        .update({
+          company_name: formData.company_name,
+          industry: formData.industry,
+          account_owner: formData.account_owner,
+          health_status: formData.health_status,
+          deployment_stage: formData.deployment_stage,
+          readiness_score: formData.readiness_score,
+          monthly_value: formData.monthly_value,
+          primary_blocker: formData.primary_blocker || "None",
+          next_action: formData.next_action,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", customer.id)
+        .select("*")
+        .single();
 
-    setFormData({
-      company_name: "",
-      industry: "",
-      account_owner: "",
-      health_status: "Healthy",
-      deployment_stage: "Discovery",
-      readiness_score: 50,
-      monthly_value: 0,
-      primary_blocker: "None",
-      next_action: "",
-    });
+      if (error) {
+        setFormError(error.message);
+        setIsSaving(false);
+        return;
+      }
 
-    setIsSaving(false);
-    onClose();
+      onCustomerUpdated(data as Customer);
+      setIsSaving(false);
+      onClose();
+    }
   }
+
+  const title = mode === "create" ? "Add Customer" : "Edit Customer";
+  const eyebrow =
+    mode === "create" ? "New Customer Deployment" : "Update Customer Record";
+  const buttonLabel =
+    mode === "create"
+      ? isSaving
+        ? "Creating..."
+        : "Create Customer"
+      : isSaving
+      ? "Saving..."
+      : "Save Changes";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-5 backdrop-blur-md">
-      <div className={`${panel} max-h-[90vh] w-full max-w-4xl overflow-y-auto p-6`}>
+      <div
+        className={`${panel} max-h-[90vh] w-full max-w-4xl overflow-y-auto p-6`}
+      >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.28em] text-cyan-300">
-              New Customer Deployment
+              {eyebrow}
             </p>
-            <h2 className="mt-2 text-3xl font-bold text-white">
-              Add Customer
-            </h2>
+            <h2 className="mt-2 text-3xl font-bold text-white">{title}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-400">
-              Create a new enterprise AI customer deployment record in Supabase.
+              {mode === "create"
+                ? "Create a new enterprise AI customer deployment record in Supabase."
+                : "Update the live customer deployment record in Supabase."}
             </p>
           </div>
 
@@ -416,7 +488,9 @@ function AddCustomerModal({
             </label>
             <input
               value={formData.company_name}
-              onChange={(event) => updateField("company_name", event.target.value)}
+              onChange={(event) =>
+                updateField("company_name", event.target.value)
+              }
               className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
               placeholder="Example: Acme Global Corp."
             />
@@ -440,7 +514,9 @@ function AddCustomerModal({
             </label>
             <input
               value={formData.account_owner}
-              onChange={(event) => updateField("account_owner", event.target.value)}
+              onChange={(event) =>
+                updateField("account_owner", event.target.value)
+              }
               className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
               placeholder="Example: AI Success"
             />
@@ -452,7 +528,9 @@ function AddCustomerModal({
             </label>
             <select
               value={formData.health_status}
-              onChange={(event) => updateField("health_status", event.target.value)}
+              onChange={(event) =>
+                updateField("health_status", event.target.value)
+              }
               className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
             >
               <option>Healthy</option>
@@ -554,7 +632,7 @@ function AddCustomerModal({
               disabled={isSaving}
               className="rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSaving ? "Saving..." : "Create Customer"}
+              {buttonLabel}
             </button>
           </div>
         </form>
@@ -621,15 +699,13 @@ function DashboardPage({
 
       <section className="mt-6 grid gap-6 xl:grid-cols-12">
         <div className={`${panel} xl:col-span-8 p-6`}>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-white">
-                Active Customer Deployments
-              </h2>
-              <p className="mt-1 text-sm text-slate-400">
-                Live customer deployment records loaded from Supabase.
-              </p>
-            </div>
+          <div>
+            <h2 className="text-2xl font-bold text-white">
+              Active Customer Deployments
+            </h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Live customer deployment records loaded from Supabase.
+            </p>
           </div>
 
           <div className="mt-7 space-y-4">
@@ -741,12 +817,12 @@ function DashboardPage({
             </p>
 
             <p className="mt-2 text-lg font-bold text-white">
-              Customer CRUD started
+              Customer CRUD complete
             </p>
 
             <p className="mt-2 text-sm leading-6 text-slate-300">
-              The dashboard reads live customer data, and the customer page can
-              create new records in Supabase.
+              Customer records can now be created, read, updated, and deleted
+              through Supabase.
             </p>
           </div>
         </div>
@@ -758,9 +834,15 @@ function DashboardPage({
 function CustomersPage({
   customers,
   onOpenAddCustomer,
+  onOpenEditCustomer,
+  onDeleteCustomer,
+  deletingCustomerId,
 }: {
   customers: Customer[];
   onOpenAddCustomer: () => void;
+  onOpenEditCustomer: (customer: Customer) => void;
+  onDeleteCustomer: (customer: Customer) => void;
+  deletingCustomerId: string | null;
 }) {
   return (
     <section className="mt-8">
@@ -807,8 +889,9 @@ function CustomersPage({
             <div className="col-span-2">Industry</div>
             <div className="col-span-2">Stage</div>
             <div className="col-span-1">Score</div>
-            <div className="col-span-2">Health</div>
-            <div className="col-span-2">Monthly Value</div>
+            <div className="col-span-1">Health</div>
+            <div className="col-span-1">Value</div>
+            <div className="col-span-2 text-right">Actions</div>
           </div>
 
           <div className="divide-y divide-slate-800">
@@ -840,14 +923,31 @@ function CustomersPage({
                   {customer.readiness_score}%
                 </div>
 
-                <div className="col-span-2">
+                <div className="col-span-1">
                   <StatusPill tone={getHealthTone(customer.health_status)}>
                     {customer.health_status}
                   </StatusPill>
                 </div>
 
-                <div className="col-span-2 font-bold text-white">
+                <div className="col-span-1 font-bold text-white">
                   {formatMonthlyValue(customer.monthly_value)}
+                </div>
+
+                <div className="col-span-2 flex justify-end gap-2">
+                  <button
+                    onClick={() => onOpenEditCustomer(customer)}
+                    className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/20"
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() => onDeleteCustomer(customer)}
+                    disabled={deletingCustomerId === customer.id}
+                    className="rounded-xl border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-xs font-bold text-rose-300 transition hover:bg-rose-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {deletingCustomerId === customer.id ? "Deleting..." : "Delete"}
+                  </button>
                 </div>
               </div>
             ))}
@@ -860,10 +960,18 @@ function CustomersPage({
 
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
-  const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [customerModalMode, setCustomerModalMode] =
+    useState<"create" | "edit">("create");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null
+  );
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [deletingCustomerId, setDeletingCustomerId] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     async function loadCustomers() {
@@ -938,8 +1046,55 @@ function App() {
     ];
   }, [customers]);
 
+  function openAddCustomer() {
+    setCustomerModalMode("create");
+    setSelectedCustomer(null);
+    setIsCustomerModalOpen(true);
+  }
+
+  function openEditCustomer(customer: Customer) {
+    setCustomerModalMode("edit");
+    setSelectedCustomer(customer);
+    setIsCustomerModalOpen(true);
+  }
+
   function handleCustomerCreated(customer: Customer) {
     setCustomers((current) => [...current, customer]);
+  }
+
+  function handleCustomerUpdated(updatedCustomer: Customer) {
+    setCustomers((current) =>
+      current.map((customer) =>
+        customer.id === updatedCustomer.id ? updatedCustomer : customer
+      )
+    );
+  }
+
+  async function handleDeleteCustomer(customer: Customer) {
+    const confirmed = window.confirm(
+      `Delete ${customer.company_name}? This will remove the customer record from Supabase.`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingCustomerId(customer.id);
+
+    const { error } = await supabase
+      .from("customers")
+      .delete()
+      .eq("id", customer.id);
+
+    if (error) {
+      alert(`Delete failed: ${error.message}`);
+      setDeletingCustomerId(null);
+      return;
+    }
+
+    setCustomers((current) =>
+      current.filter((item) => item.id !== customer.id)
+    );
+
+    setDeletingCustomerId(null);
   }
 
   return (
@@ -952,7 +1107,10 @@ function App() {
         {activePage === "Customers" ? (
           <CustomersPage
             customers={customers}
-            onOpenAddCustomer={() => setIsAddCustomerOpen(true)}
+            onOpenAddCustomer={openAddCustomer}
+            onOpenEditCustomer={openEditCustomer}
+            onDeleteCustomer={handleDeleteCustomer}
+            deletingCustomerId={deletingCustomerId}
           />
         ) : (
           <DashboardPage
@@ -963,10 +1121,13 @@ function App() {
           />
         )}
 
-        <AddCustomerModal
-          isOpen={isAddCustomerOpen}
-          onClose={() => setIsAddCustomerOpen(false)}
+        <CustomerFormModal
+          mode={customerModalMode}
+          customer={selectedCustomer}
+          isOpen={isCustomerModalOpen}
+          onClose={() => setIsCustomerModalOpen(false)}
           onCustomerCreated={handleCustomerCreated}
+          onCustomerUpdated={handleCustomerUpdated}
         />
       </main>
     </div>
