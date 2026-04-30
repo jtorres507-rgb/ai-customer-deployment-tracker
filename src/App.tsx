@@ -1,3 +1,7 @@
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { supabase } from "./lib/supabase";
+import type { Customer } from "./types/customer";
+
 import {
   Activity,
   AlertTriangle,
@@ -19,11 +23,12 @@ import {
   Workflow,
 } from "lucide-react";
 
+type Tone = "cyan" | "emerald" | "amber" | "rose" | "slate";
+
 const panel =
   "rounded-3xl border border-slate-700/70 bg-slate-900/70 shadow-[0_20px_70px_rgba(0,0,0,0.35)] backdrop-blur-xl";
 
-const glass =
-  "rounded-2xl border border-slate-700/70 bg-slate-950/50";
+const glass = "rounded-2xl border border-slate-700/70 bg-slate-950/50";
 
 const navItems = [
   { name: "Dashboard", icon: LayoutDashboard },
@@ -37,71 +42,6 @@ const navItems = [
   { name: "Settings", icon: Settings },
 ];
 
-const metrics = [
-  {
-    label: "Active Customers",
-    value: "18",
-    change: "+4",
-    detail: "enterprise accounts",
-    icon: Building2,
-    tone: "cyan",
-  },
-  {
-    label: "Production Deployments",
-    value: "7",
-    change: "+2",
-    detail: "validated workflows",
-    icon: CheckCircle2,
-    tone: "emerald",
-  },
-  {
-    label: "Open Blockers",
-    value: "5",
-    change: "2 high",
-    detail: "need action",
-    icon: AlertTriangle,
-    tone: "amber",
-  },
-  {
-    label: "Monthly Value",
-    value: "$148K",
-    change: "+21%",
-    detail: "realized impact",
-    icon: BarChart3,
-    tone: "emerald",
-  },
-];
-
-const deploymentRows = [
-  {
-    customer: "Enterprise Logistics Co.",
-    stage: "Security Review",
-    readiness: 82,
-    owner: "AI Success",
-    blocker: "Data retention approval",
-    value: "$96K/mo",
-    tone: "amber",
-  },
-  {
-    customer: "Regional Finance Group",
-    stage: "Pilot",
-    readiness: 74,
-    owner: "Solutions",
-    blocker: "Champion enablement",
-    value: "$42K/mo",
-    tone: "cyan",
-  },
-  {
-    customer: "Healthcare Ops Team",
-    stage: "Production",
-    readiness: 91,
-    owner: "Technical Success",
-    blocker: "None",
-    value: "$68K/mo",
-    tone: "emerald",
-  },
-];
-
 const upcomingActions = [
   "Finalize governance decision for document workflows",
   "Schedule finance champion enablement sprint",
@@ -109,14 +49,26 @@ const upcomingActions = [
   "Prepare executive value memo for logistics account",
 ];
 
+function getStageTone(stage: string): Tone {
+  if (stage === "Production") return "emerald";
+  if (stage === "Security Review") return "amber";
+  if (stage === "Pilot") return "cyan";
+  if (stage === "Blocked") return "rose";
+  return "slate";
+}
+
+function formatMonthlyValue(value: number) {
+  return `$${Math.round(Number(value ?? 0) / 1000)}K/mo`;
+}
+
 function StatusPill({
   children,
   tone = "cyan",
 }: {
-  children: React.ReactNode;
-  tone?: "cyan" | "emerald" | "amber" | "rose" | "slate";
+  children: ReactNode;
+  tone?: Tone;
 }) {
-  const tones = {
+  const tones: Record<Tone, string> = {
     cyan: "border-cyan-400/30 bg-cyan-400/10 text-cyan-300",
     emerald: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
     amber: "border-amber-400/30 bg-amber-400/10 text-amber-300",
@@ -141,6 +93,7 @@ function Sidebar() {
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-400/30 bg-cyan-400/10 shadow-[0_0_30px_rgba(34,211,238,0.18)]">
             <Network className="text-cyan-300" size={28} />
           </div>
+
           <div>
             <h1 className="text-lg font-bold leading-tight text-white">
               AI Customer
@@ -209,6 +162,7 @@ function Sidebar() {
               </p>
             </div>
           </div>
+
           <button className="mt-4 w-full rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-300">
             Launch Assistant
           </button>
@@ -237,7 +191,9 @@ function TopBar() {
       </div>
 
       <div className="flex flex-1 flex-wrap items-center gap-3 lg:max-w-3xl lg:justify-end">
-        <div className={`${glass} flex min-w-[320px] flex-1 items-center gap-3 px-4 py-3 lg:max-w-xl`}>
+        <div
+          className={`${glass} flex min-w-[320px] flex-1 items-center gap-3 px-4 py-3 lg:max-w-xl`}
+        >
           <Search size={18} className="text-slate-500" />
           <span className="text-sm text-slate-500">
             Search customers, blockers, use cases...
@@ -259,7 +215,18 @@ function TopBar() {
   );
 }
 
-function MetricCard({ item }: { item: (typeof metrics)[number] }) {
+function MetricCard({
+  item,
+}: {
+  item: {
+    label: string;
+    value: string;
+    change: string;
+    detail: string;
+    icon: React.ElementType;
+    tone: Tone;
+  };
+}) {
   const Icon = item.icon;
 
   return (
@@ -269,20 +236,96 @@ function MetricCard({ item }: { item: (typeof metrics)[number] }) {
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-400/30 bg-cyan-400/10">
             <Icon className="text-cyan-300" size={22} />
           </div>
+
           <p className="mt-5 text-sm text-slate-400">{item.label}</p>
           <p className="mt-1 text-3xl font-bold text-white">{item.value}</p>
           <p className="mt-1 text-xs text-slate-500">{item.detail}</p>
         </div>
 
-        <StatusPill tone={item.tone as "cyan" | "emerald" | "amber"}>
-          {item.change}
-        </StatusPill>
+        <StatusPill tone={item.tone}>{item.change}</StatusPill>
       </div>
     </div>
   );
 }
 
 function App() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadCustomers() {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        setLoadError(error.message);
+        setIsLoading(false);
+        return;
+      }
+
+      setCustomers(data ?? []);
+      setIsLoading(false);
+    }
+
+    loadCustomers();
+  }, []);
+
+  const dashboardMetrics = useMemo(() => {
+    const activeCustomers = customers.length;
+
+    const productionDeployments = customers.filter(
+      (customer) => customer.deployment_stage === "Production"
+    ).length;
+
+    const openBlockers = customers.filter(
+      (customer) =>
+        customer.primary_blocker && customer.primary_blocker !== "None"
+    ).length;
+
+    const monthlyValue = customers.reduce(
+      (total, customer) => total + Number(customer.monthly_value ?? 0),
+      0
+    );
+
+    return [
+      {
+        label: "Active Customers",
+        value: String(activeCustomers),
+        change: "+4",
+        detail: "enterprise accounts",
+        icon: Building2,
+        tone: "cyan" as Tone,
+      },
+      {
+        label: "Production Deployments",
+        value: String(productionDeployments),
+        change: "+2",
+        detail: "validated workflows",
+        icon: CheckCircle2,
+        tone: "emerald" as Tone,
+      },
+      {
+        label: "Open Blockers",
+        value: String(openBlockers),
+        change: "2 high",
+        detail: "need action",
+        icon: AlertTriangle,
+        tone: "amber" as Tone,
+      },
+      {
+        label: "Monthly Value",
+        value: `$${Math.round(monthlyValue / 1000)}K`,
+        change: "+21%",
+        detail: "realized impact",
+        icon: BarChart3,
+        tone: "emerald" as Tone,
+      },
+    ];
+  }, [customers]);
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.15),transparent_32%),linear-gradient(135deg,#020617,#0f172a_45%,#020617)] text-white xl:flex">
       <Sidebar />
@@ -294,11 +337,13 @@ function App() {
           <p className="text-sm font-bold uppercase tracking-[0.32em] text-cyan-300">
             AI Customer Deployment Tracker
           </p>
+
           <div className="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <h1 className="text-5xl font-bold tracking-tight text-white">
                 Deployment Operations Dashboard
               </h1>
+
               <p className="mt-4 max-w-4xl leading-8 text-slate-300">
                 Manage enterprise AI customer deployments, readiness scoring,
                 blockers, stakeholders, use cases, and value realization from one
@@ -310,14 +355,16 @@ function App() {
               <Database size={18} className="text-cyan-300" />
               <div>
                 <p className="text-xs text-slate-500">Data Layer</p>
-                <p className="text-sm font-bold text-white">Supabase planned</p>
+                <p className="text-sm font-bold text-white">
+                  Supabase connected
+                </p>
               </div>
             </div>
           </div>
         </section>
 
         <section className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          {metrics.map((item) => (
+          {dashboardMetrics.map((item) => (
             <MetricCard key={item.label} item={item} />
           ))}
         </section>
@@ -330,73 +377,89 @@ function App() {
                   Active Customer Deployments
                 </h2>
                 <p className="mt-1 text-sm text-slate-400">
-                  Database-backed customer deployment records will appear here in
-                  the next phase.
+                  Live customer deployment records loaded from Supabase.
                 </p>
               </div>
+
               <button className="rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300">
                 + Add Customer
               </button>
             </div>
 
             <div className="mt-7 space-y-4">
-              {deploymentRows.map((row) => (
-                <div
-                  key={row.customer}
-                  className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5"
-                >
-                  <div className="grid gap-5 lg:grid-cols-12 lg:items-center">
-                    <div className="lg:col-span-3">
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-                        Customer
-                      </p>
-                      <h3 className="mt-2 text-lg font-bold text-white">
-                        {row.customer}
-                      </h3>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Owner: {row.owner}
-                      </p>
-                    </div>
+              {isLoading && (
+                <div className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5 text-slate-300">
+                  Loading customer deployment records from Supabase...
+                </div>
+              )}
 
-                    <div className="lg:col-span-2">
-                      <p className="text-xs text-slate-500">Stage</p>
-                      <div className="mt-2">
-                        <StatusPill tone={row.tone as "cyan" | "emerald" | "amber"}>
-                          {row.stage}
-                        </StatusPill>
+              {loadError && (
+                <div className="rounded-3xl border border-rose-400/30 bg-rose-400/10 p-5 text-rose-200">
+                  Supabase error: {loadError}
+                </div>
+              )}
+
+              {!isLoading &&
+                !loadError &&
+                customers.map((row) => (
+                  <div
+                    key={row.id}
+                    className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5"
+                  >
+                    <div className="grid gap-5 lg:grid-cols-12 lg:items-center">
+                      <div className="lg:col-span-3">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                          Customer
+                        </p>
+                        <h3 className="mt-2 text-lg font-bold text-white">
+                          {row.company_name}
+                        </h3>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Owner: {row.account_owner}
+                        </p>
+                      </div>
+
+                      <div className="lg:col-span-2">
+                        <p className="text-xs text-slate-500">Stage</p>
+                        <div className="mt-2">
+                          <StatusPill tone={getStageTone(row.deployment_stage)}>
+                            {row.deployment_stage}
+                          </StatusPill>
+                        </div>
+                      </div>
+
+                      <div className="lg:col-span-2">
+                        <p className="text-xs text-slate-500">Readiness</p>
+                        <p className="mt-1 text-2xl font-bold text-cyan-300">
+                          {row.readiness_score}%
+                        </p>
+                      </div>
+
+                      <div className="lg:col-span-3">
+                        <p className="text-xs text-slate-500">
+                          Primary Blocker
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-200">
+                          {row.primary_blocker ?? "None"}
+                        </p>
+                      </div>
+
+                      <div className="lg:col-span-2">
+                        <p className="text-xs text-slate-500">Value</p>
+                        <p className="mt-1 text-lg font-bold text-white">
+                          {formatMonthlyValue(row.monthly_value)}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="lg:col-span-2">
-                      <p className="text-xs text-slate-500">Readiness</p>
-                      <p className="mt-1 text-2xl font-bold text-cyan-300">
-                        {row.readiness}%
-                      </p>
-                    </div>
-
-                    <div className="lg:col-span-3">
-                      <p className="text-xs text-slate-500">Primary Blocker</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-200">
-                        {row.blocker}
-                      </p>
-                    </div>
-
-                    <div className="lg:col-span-2">
-                      <p className="text-xs text-slate-500">Value</p>
-                      <p className="mt-1 text-lg font-bold text-white">
-                        {row.value}
-                      </p>
+                    <div className="mt-5 h-3 rounded-full bg-slate-800">
+                      <div
+                        className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_18px_rgba(34,211,238,0.35)]"
+                        style={{ width: `${row.readiness_score}%` }}
+                      />
                     </div>
                   </div>
-
-                  <div className="mt-5 h-3 rounded-full bg-slate-800">
-                    <div
-                      className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_18px_rgba(34,211,238,0.35)]"
-                      style={{ width: `${row.readiness}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
 
@@ -407,6 +470,7 @@ function App() {
                 Upcoming Actions
               </h2>
             </div>
+
             <p className="mt-1 text-sm text-slate-400">
               Priority next steps for customer deployment momentum.
             </p>
@@ -417,6 +481,7 @@ function App() {
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 text-sm font-bold text-emerald-300">
                     {index + 1}
                   </div>
+
                   <p className="text-sm font-semibold leading-6 text-slate-200">
                     {action}
                   </p>
@@ -426,14 +491,16 @@ function App() {
 
             <div className="mt-6 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">
-                Phase 2 Status
+                Phase 4 Status
               </p>
+
               <p className="mt-2 text-lg font-bold text-white">
-                Frontend shell ready
+                Supabase connection active
               </p>
+
               <p className="mt-2 text-sm leading-6 text-slate-300">
-                Next phase will add the real data model, Supabase project, and
-                customer CRUD workflow.
+                Customer deployment rows are now loading from the live Supabase
+                customers table.
               </p>
             </div>
           </div>
