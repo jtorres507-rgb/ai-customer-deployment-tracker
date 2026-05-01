@@ -62,7 +62,7 @@ const navItems = [
   { name: "Customers", icon: Building2 },
   { name: "Deployments", icon: Workflow },
   { name: "Use Cases", icon: ClipboardList },
-  { name: "Blockers", icon: AlertTriangle, count: 5 },
+  { name: "Blockers", icon: AlertTriangle },
   { name: "Stakeholders", icon: Users },
   { name: "Value Tracking", icon: BarChart3 },
   { name: "Reports", icon: FileText },
@@ -179,9 +179,11 @@ function StatusPill({
 function Sidebar({
   activePage,
   setActivePage,
+  pageCounts,
 }: {
   activePage: string;
   setActivePage: (page: string) => void;
+  pageCounts: Record<string, number>;
 }) {
   return (
     <aside className="hidden min-h-screen w-[300px] shrink-0 border-r border-slate-800 bg-slate-950 p-4 xl:block">
@@ -202,7 +204,7 @@ function Sidebar({
             </p>
           </div>
         </div>
-
+function Side
         <div className="mt-7 rounded-2xl border border-slate-700/70 bg-slate-950/60 p-3">
           <div className="mb-3 flex items-center justify-between px-2">
             <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">
@@ -239,9 +241,9 @@ function Sidebar({
                     {item.name}
                   </span>
 
-                  {item.count && (
-                    <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-xs text-amber-300">
-                      {item.count}
+                  {pageCounts[item.name] > 0 && item.name !== "Dashboard" && (
+                    <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-xs text-cyan-300">
+                      {pageCounts[item.name]}
                     </span>
                   )}
                 </button>
@@ -2838,6 +2840,21 @@ function App() {
     loadValueMetrics();
   }, []);
 
+  const pageCounts = useMemo(
+  () => ({
+    Dashboard: customers.length,
+    Customers: customers.length,
+    Deployments: deployments.length,
+    "Use Cases": useCases.length,
+    Blockers: blockers.length,
+    Stakeholders: stakeholders.length,
+    "Value Tracking": valueMetrics.length,
+    Reports: customers.length,
+    Settings: 0,
+  }),
+  [customers, deployments, useCases, blockers, stakeholders, valueMetrics]
+);
+
   const dashboardMetrics = useMemo(() => {
     const activeCustomers = customers.length;
 
@@ -2944,7 +2961,11 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.15),transparent_32%),linear-gradient(135deg,#020617,#0f172a_45%,#020617)] text-white xl:flex">
-      <Sidebar activePage={activePage} setActivePage={setActivePage} />
+      <Sidebar
+        activePage={activePage}
+        setActivePage={setActivePage}
+        pageCounts={pageCounts}
+      />
 
       <main className="min-w-0 flex-1 p-5 lg:p-8">
         <TopBar />
