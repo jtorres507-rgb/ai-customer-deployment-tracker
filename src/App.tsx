@@ -204,7 +204,6 @@ function Sidebar({
             </p>
           </div>
         </div>
-function Side
         <div className="mt-7 rounded-2xl border border-slate-700/70 bg-slate-950/60 p-3">
           <div className="mb-3 flex items-center justify-between px-2">
             <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">
