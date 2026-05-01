@@ -2159,6 +2159,487 @@ function ValueTrackingPage({
   );
 }
 
+function ReportsPage({
+  customers,
+  deployments,
+  useCases,
+  blockers,
+  stakeholders,
+  valueMetrics,
+}: {
+  customers: Customer[];
+  deployments: Deployment[];
+  useCases: UseCase[];
+  blockers: Blocker[];
+  stakeholders: Stakeholder[];
+  valueMetrics: ValueMetric[];
+}) {
+  const averageReadiness =
+    customers.length === 0
+      ? 0
+      : Math.round(
+          customers.reduce(
+            (total, customer) => total + Number(customer.readiness_score ?? 0),
+            0
+          ) / customers.length
+        );
+
+  const productionDeployments = deployments.filter(
+    (deployment) => deployment.stage === "Production"
+  ).length;
+
+  const productionUseCases = useCases.filter(
+    (useCase) => useCase.stage === "Production"
+  ).length;
+
+  const highSeverityBlockers = blockers.filter(
+    (blocker) => blocker.severity === "High"
+  );
+
+  const mediumSeverityBlockers = blockers.filter(
+    (blocker) => blocker.severity === "Medium"
+  );
+
+  const alignedStakeholders = stakeholders.filter(
+    (stakeholder) => stakeholder.sentiment === "Aligned"
+  ).length;
+
+  const atRiskStakeholders = stakeholders.filter(
+    (stakeholder) =>
+      stakeholder.sentiment === "At Risk" ||
+      stakeholder.engagement_status === "At Risk"
+  ).length;
+
+  const highInfluenceStakeholders = stakeholders.filter(
+    (stakeholder) => stakeholder.influence_level === "High"
+  ).length;
+
+  const totalMonthlyImpact = valueMetrics.reduce(
+    (total, metric) => total + Number(metric.monthly_impact ?? 0),
+    0
+  );
+
+  const totalCurrentValue = valueMetrics.reduce(
+    (total, metric) => total + Number(metric.current_value ?? 0),
+    0
+  );
+
+  const totalTargetValue = valueMetrics.reduce(
+    (total, metric) => total + Number(metric.target_value ?? 0),
+    0
+  );
+
+  const averageValueConfidence =
+    valueMetrics.length === 0
+      ? 0
+      : Math.round(
+          valueMetrics.reduce(
+            (total, metric) => total + Number(metric.confidence_score ?? 0),
+            0
+          ) / valueMetrics.length
+        );
+
+  const targetProgress =
+    totalTargetValue === 0
+      ? 0
+      : Math.min(Math.round((totalCurrentValue / totalTargetValue) * 100), 100);
+
+  const rankedCustomers = [...customers].sort(
+    (a, b) => Number(b.readiness_score ?? 0) - Number(a.readiness_score ?? 0)
+  );
+
+  const topValueMetrics = [...valueMetrics].sort(
+    (a, b) => Number(b.monthly_impact ?? 0) - Number(a.monthly_impact ?? 0)
+  );
+
+  const executiveNarrative = `AI deployment portfolio is progressing with ${customers.length} active customers, ${productionDeployments} production deployment${
+    productionDeployments === 1 ? "" : "s"
+  }, ${blockers.length} active blocker${
+    blockers.length === 1 ? "" : "s"
+  }, and ${formatMonthlyValue(
+    totalMonthlyImpact
+  )} in tracked monthly value realization. Current portfolio readiness is ${averageReadiness}% with ${averageValueConfidence}% average value confidence.`;
+
+  const recommendations = [
+    highSeverityBlockers.length > 0
+      ? `Prioritize high-severity blocker resolution for ${
+          highSeverityBlockers[0].customers?.company_name ?? "the affected customer"
+        }.`
+      : "Maintain weekly blocker review cadence to prevent deployment delays.",
+    mediumSeverityBlockers.length > 0
+      ? `Run enablement or governance follow-up for ${
+          mediumSeverityBlockers[0].customers?.company_name ??
+          "medium-risk customer accounts"
+        }.`
+      : "Continue moving medium-risk items through standard success checkpoints.",
+    topValueMetrics.length > 0
+      ? `Prepare executive value memo for ${
+          topValueMetrics[0].customers?.company_name ?? "the top value account"
+        }.`
+      : "Create value realization baseline for each active deployment.",
+    atRiskStakeholders > 0
+      ? "Schedule stakeholder alignment sessions for at-risk relationships."
+      : "Use aligned stakeholders to support expansion and adoption planning.",
+  ];
+
+  return (
+    <section className="mt-8">
+      <p className="text-sm font-bold uppercase tracking-[0.32em] text-cyan-300">
+        Executive Reporting
+      </p>
+
+      <div className="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h1 className="text-5xl font-bold tracking-tight text-white">
+            Reports
+          </h1>
+          <p className="mt-4 max-w-4xl leading-8 text-slate-300">
+            Executive summary of deployment health, customer readiness,
+            blockers, stakeholder alignment, value realization, and recommended
+            next actions.
+          </p>
+        </div>
+
+        <StatusPill tone="cyan">Live Executive Summary</StatusPill>
+      </div>
+
+      <section className="mt-7 grid gap-5 md:grid-cols-3 xl:grid-cols-6">
+        <MetricCard
+          item={{
+            label: "Customers",
+            value: String(customers.length),
+            change: "active",
+            detail: "enterprise accounts",
+            icon: Building2,
+            tone: "cyan",
+          }}
+        />
+
+        <MetricCard
+          item={{
+            label: "Production",
+            value: String(productionDeployments),
+            change: "live",
+            detail: "production deployments",
+            icon: CheckCircle2,
+            tone: "emerald",
+          }}
+        />
+
+        <MetricCard
+          item={{
+            label: "Use Cases",
+            value: String(productionUseCases),
+            change: "prod",
+            detail: "production workflows",
+            icon: Workflow,
+            tone: "emerald",
+          }}
+        />
+
+        <MetricCard
+          item={{
+            label: "Open Blockers",
+            value: String(blockers.length),
+            change: `${highSeverityBlockers.length} high`,
+            detail: "tracked risk items",
+            icon: AlertTriangle,
+            tone: blockers.length > 0 ? "amber" : "emerald",
+          }}
+        />
+
+        <MetricCard
+          item={{
+            label: "Monthly Value",
+            value: formatMonthlyValue(totalMonthlyImpact),
+            change: "+21%",
+            detail: "tracked impact",
+            icon: DollarSign,
+            tone: "emerald",
+          }}
+        />
+
+        <MetricCard
+          item={{
+            label: "Readiness",
+            value: `${averageReadiness}%`,
+            change: "avg",
+            detail: "portfolio readiness",
+            icon: Activity,
+            tone: averageReadiness >= 80 ? "emerald" : "cyan",
+          }}
+        />
+      </section>
+
+      <section className="mt-7 grid gap-6 xl:grid-cols-12">
+        <div className={`${panel} p-6 xl:col-span-7`}>
+          <div className="flex items-center gap-3">
+            <FileText className="text-cyan-300" size={24} />
+            <h2 className="text-2xl font-bold text-white">
+              Executive Health Narrative
+            </h2>
+          </div>
+
+          <p className="mt-5 rounded-3xl border border-cyan-400/20 bg-cyan-400/10 p-5 text-base font-semibold leading-8 text-slate-100">
+            {executiveNarrative}
+          </p>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <div className={`${glass} p-4`}>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                Target Progress
+              </p>
+              <p className="mt-2 text-3xl font-bold text-white">
+                {targetProgress}%
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                current value vs target
+              </p>
+            </div>
+
+            <div className={`${glass} p-4`}>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                Value Confidence
+              </p>
+              <p className="mt-2 text-3xl font-bold text-cyan-300">
+                {averageValueConfidence}%
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                average value confidence
+              </p>
+            </div>
+
+            <div className={`${glass} p-4`}>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                Stakeholder Health
+              </p>
+              <p className="mt-2 text-3xl font-bold text-emerald-300">
+                {alignedStakeholders}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                aligned stakeholder records
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className={`${panel} p-6 xl:col-span-5`}>
+          <div className="flex items-center gap-3">
+            <Sparkles className="text-emerald-300" size={24} />
+            <h2 className="text-2xl font-bold text-white">
+              Executive Recommendations
+            </h2>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {recommendations.map((recommendation, index) => (
+              <div key={recommendation} className={`${glass} flex gap-4 p-4`}>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 text-sm font-bold text-emerald-300">
+                  {index + 1}
+                </div>
+                <p className="text-sm font-semibold leading-6 text-slate-200">
+                  {recommendation}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-7 grid gap-6 xl:grid-cols-12">
+        <div className={`${panel} p-6 xl:col-span-6`}>
+          <h2 className="text-2xl font-bold text-white">
+            Customer Readiness Ranking
+          </h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Ranked by live readiness score from Supabase.
+          </p>
+
+          <div className="mt-6 space-y-4">
+            {rankedCustomers.map((customer, index) => (
+              <div key={customer.id} className={`${glass} p-4`}>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      #{index + 1} Customer
+                    </p>
+                    <h3 className="mt-1 text-lg font-bold text-white">
+                      {customer.company_name}
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {customer.industry} • Owner: {customer.account_owner}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-cyan-300">
+                      {Number(customer.readiness_score ?? 0)}%
+                    </p>
+                    <StatusPill tone={getHealthTone(customer.health_status)}>
+                      {customer.health_status}
+                    </StatusPill>
+                  </div>
+                </div>
+
+                <div className="mt-4 h-3 rounded-full bg-slate-800">
+                  <div
+                    className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400"
+                    style={{ width: `${Number(customer.readiness_score ?? 0)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className={`${panel} p-6 xl:col-span-6`}>
+          <h2 className="text-2xl font-bold text-white">
+            Risk & Blocker Summary
+          </h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Active blocker portfolio and required action visibility.
+          </p>
+
+          <div className="mt-6 space-y-4">
+            {blockers.length === 0 && (
+              <div className={`${glass} p-5 text-slate-300`}>
+                No active blockers are currently tracked.
+              </div>
+            )}
+
+            {blockers.map((blocker) => (
+              <div key={blocker.id} className={`${glass} p-4`}>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      {blocker.customers?.company_name ?? "Unknown Customer"}
+                    </p>
+                    <h3 className="mt-1 text-lg font-bold text-white">
+                      {blocker.title}
+                    </h3>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-300">
+                      {blocker.required_action ??
+                        "Assign owner and confirm blocker resolution path."}
+                    </p>
+                  </div>
+
+                  <StatusPill tone={getSeverityTone(blocker.severity)}>
+                    {blocker.severity}
+                  </StatusPill>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-7 grid gap-6 xl:grid-cols-12">
+        <div className={`${panel} p-6 xl:col-span-5`}>
+          <h2 className="text-2xl font-bold text-white">
+            Stakeholder Alignment Summary
+          </h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Sponsor, champion, and stakeholder health indicators.
+          </p>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className={`${glass} p-4`}>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                High Influence
+              </p>
+              <p className="mt-2 text-3xl font-bold text-cyan-300">
+                {highInfluenceStakeholders}
+              </p>
+            </div>
+
+            <div className={`${glass} p-4`}>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                Aligned
+              </p>
+              <p className="mt-2 text-3xl font-bold text-emerald-300">
+                {alignedStakeholders}
+              </p>
+            </div>
+
+            <div className={`${glass} p-4`}>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                At Risk
+              </p>
+              <p className="mt-2 text-3xl font-bold text-amber-300">
+                {atRiskStakeholders}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className={`${panel} p-6 xl:col-span-7`}>
+          <h2 className="text-2xl font-bold text-white">
+            Value Realization Summary
+          </h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Highest-impact customer value metrics and next value actions.
+          </p>
+
+          <div className="mt-6 space-y-4">
+            {topValueMetrics.slice(0, 3).map((metric) => {
+              const current = Number(metric.current_value ?? 0);
+              const target = Number(metric.target_value ?? 0);
+              const progress =
+                target === 0
+                  ? 0
+                  : Math.min(Math.round((current / target) * 100), 100);
+
+              return (
+                <div key={metric.id} className={`${glass} p-4`}>
+                  <div className="grid gap-4 lg:grid-cols-12 lg:items-center">
+                    <div className="lg:col-span-4">
+                      <h3 className="font-bold text-white">
+                        {metric.metric_name}
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {metric.customers?.company_name ?? "Unknown Customer"}
+                      </p>
+                    </div>
+
+                    <div className="lg:col-span-2">
+                      <p className="text-xs text-slate-500">Monthly Impact</p>
+                      <p className="mt-1 font-bold text-emerald-300">
+                        {formatMonthlyValue(metric.monthly_impact)}
+                      </p>
+                    </div>
+
+                    <div className="lg:col-span-2">
+                      <p className="text-xs text-slate-500">Confidence</p>
+                      <p className="mt-1 font-bold text-cyan-300">
+                        {Number(metric.confidence_score ?? 0)}%
+                      </p>
+                    </div>
+
+                    <div className="lg:col-span-4">
+                      <p className="text-xs text-slate-500">Next Action</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-200">
+                        {metric.next_action ??
+                          "Review value realization with customer sponsor."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 h-3 rounded-full bg-slate-800">
+                    <div
+                      className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+    </section>
+  );
+}
+
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -2505,6 +2986,15 @@ function App() {
             valueMetrics={valueMetrics}
             isLoading={isValueMetricsLoading}
             loadError={valueMetricsError}
+          />
+        ) : activePage === "Reports" ? (
+          <ReportsPage
+            customers={customers}
+            deployments={deployments}
+            useCases={useCases}
+            blockers={blockers}
+            stakeholders={stakeholders}
+            valueMetrics={valueMetrics}
           />
         ) : (
           <DashboardPage
