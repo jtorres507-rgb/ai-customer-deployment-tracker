@@ -10,6 +10,7 @@ import { supabase } from "./lib/supabase";
 import type { Customer } from "./types/customer";
 import type { Deployment } from "./types/deployment";
 import type { UseCase } from "./types/useCase";
+import type { Blocker } from "./types/blocker";
 
 import {
   Activity,
@@ -89,6 +90,13 @@ function getRiskTone(risk: string): Tone {
   if (risk === "Low") return "emerald";
   if (risk === "Medium") return "amber";
   if (risk === "High") return "rose";
+  return "slate";
+}
+
+function getSeverityTone(severity: string): Tone {
+  if (severity === "High") return "rose";
+  if (severity === "Medium") return "amber";
+  if (severity === "Low") return "emerald";
   return "slate";
 }
 
@@ -1055,35 +1063,36 @@ function DeploymentsPage({
       </div>
 
       <section className="mt-7 grid gap-5 md:grid-cols-3">
-        <div className={`${panel} p-5`}>
-          <p className="text-sm text-slate-400">Average Technical Readiness</p>
-          <p className="mt-2 text-3xl font-bold text-cyan-300">
-            {averageReadiness}%
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            across active customer deployments
-          </p>
-        </div>
-
-        <div className={`${panel} p-5`}>
-          <p className="text-sm text-slate-400">Production Deployments</p>
-          <p className="mt-2 text-3xl font-bold text-emerald-300">
-            {productionCount}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            validated workflows in production
-          </p>
-        </div>
-
-        <div className={`${panel} p-5`}>
-          <p className="text-sm text-slate-400">Security / Review Work</p>
-          <p className="mt-2 text-3xl font-bold text-amber-300">
-            {reviewCount}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            deployments requiring governance attention
-          </p>
-        </div>
+        <MetricCard
+          item={{
+            label: "Average Technical Readiness",
+            value: `${averageReadiness}%`,
+            change: "+8",
+            detail: "across active deployments",
+            icon: Activity,
+            tone: "cyan",
+          }}
+        />
+        <MetricCard
+          item={{
+            label: "Production Deployments",
+            value: String(productionCount),
+            change: "+2",
+            detail: "validated workflows",
+            icon: CheckCircle2,
+            tone: "emerald",
+          }}
+        />
+        <MetricCard
+          item={{
+            label: "Security / Review Work",
+            value: String(reviewCount),
+            change: "review",
+            detail: "needs governance attention",
+            icon: AlertTriangle,
+            tone: "amber",
+          }}
+        />
       </section>
 
       <div className={`${panel} mt-7 p-6`}>
@@ -1094,7 +1103,7 @@ function DeploymentsPage({
 
         <div className="mt-7 space-y-4">
           {isLoading && (
-            <div className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5 text-slate-300">
+            <div className={`${glass} p-5 text-slate-300`}>
               Loading deployment records from Supabase...
             </div>
           )}
@@ -1108,10 +1117,7 @@ function DeploymentsPage({
           {!isLoading &&
             !loadError &&
             deployments.map((deployment) => (
-              <div
-                key={deployment.id}
-                className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5"
-              >
+              <div key={deployment.id} className={`${glass} p-5`}>
                 <div className="grid gap-5 xl:grid-cols-12 xl:items-center">
                   <div className="xl:col-span-3">
                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
@@ -1167,7 +1173,7 @@ function DeploymentsPage({
 
                 <div className="mt-5 h-3 rounded-full bg-slate-800">
                   <div
-                    className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_18px_rgba(34,211,238,0.35)]"
+                    className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400"
                     style={{ width: `${deployment.technical_readiness}%` }}
                   />
                 </div>
@@ -1241,45 +1247,46 @@ function UseCasesPage({
       </div>
 
       <section className="mt-7 grid gap-5 md:grid-cols-4">
-        <div className={`${panel} p-5`}>
-          <p className="text-sm text-slate-400">Monthly Use Case Value</p>
-          <p className="mt-2 text-3xl font-bold text-emerald-300">
-            {formatMonthlyValue(totalMonthlyValue)}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            combined workflow value
-          </p>
-        </div>
-
-        <div className={`${panel} p-5`}>
-          <p className="text-sm text-slate-400">Average Confidence</p>
-          <p className="mt-2 text-3xl font-bold text-cyan-300">
-            {averageConfidence}%
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            across active use cases
-          </p>
-        </div>
-
-        <div className={`${panel} p-5`}>
-          <p className="text-sm text-slate-400">Production</p>
-          <p className="mt-2 text-3xl font-bold text-emerald-300">
-            {productionCount}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            workflows producing value
-          </p>
-        </div>
-
-        <div className={`${panel} p-5`}>
-          <p className="text-sm text-slate-400">Pilot</p>
-          <p className="mt-2 text-3xl font-bold text-cyan-300">
-            {pilotCount}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            workflows in validation
-          </p>
-        </div>
+        <MetricCard
+          item={{
+            label: "Monthly Use Case Value",
+            value: formatMonthlyValue(totalMonthlyValue),
+            change: "+21%",
+            detail: "combined workflow value",
+            icon: BarChart3,
+            tone: "emerald",
+          }}
+        />
+        <MetricCard
+          item={{
+            label: "Average Confidence",
+            value: `${averageConfidence}%`,
+            change: "+8",
+            detail: "across active use cases",
+            icon: Activity,
+            tone: "cyan",
+          }}
+        />
+        <MetricCard
+          item={{
+            label: "Production",
+            value: String(productionCount),
+            change: "live",
+            detail: "workflows producing value",
+            icon: CheckCircle2,
+            tone: "emerald",
+          }}
+        />
+        <MetricCard
+          item={{
+            label: "Pilot",
+            value: String(pilotCount),
+            change: "pilot",
+            detail: "workflows in validation",
+            icon: Workflow,
+            tone: "cyan",
+          }}
+        />
       </section>
 
       <div className={`${panel} mt-7 p-6`}>
@@ -1292,7 +1299,7 @@ function UseCasesPage({
 
         <div className="mt-7 space-y-4">
           {isLoading && (
-            <div className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5 text-slate-300">
+            <div className={`${glass} p-5 text-slate-300`}>
               Loading use case records from Supabase...
             </div>
           )}
@@ -1306,10 +1313,7 @@ function UseCasesPage({
           {!isLoading &&
             !loadError &&
             useCases.map((useCase) => (
-              <div
-                key={useCase.id}
-                className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5"
-              >
+              <div key={useCase.id} className={`${glass} p-5`}>
                 <div className="grid gap-5 xl:grid-cols-12 xl:items-center">
                   <div className="xl:col-span-3">
                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
@@ -1365,7 +1369,7 @@ function UseCasesPage({
 
                 <div className="mt-5 h-3 rounded-full bg-slate-800">
                   <div
-                    className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_18px_rgba(34,211,238,0.35)]"
+                    className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400"
                     style={{ width: `${useCase.confidence_score}%` }}
                   />
                 </div>
@@ -1400,6 +1404,228 @@ function UseCasesPage({
   );
 }
 
+function BlockersPage({
+  blockers,
+  isLoading,
+  loadError,
+}: {
+  blockers: Blocker[];
+  isLoading: boolean;
+  loadError: string | null;
+}) {
+  const highSeverityCount = blockers.filter(
+    (blocker) => blocker.severity === "High"
+  ).length;
+
+  const mediumSeverityCount = blockers.filter(
+    (blocker) => blocker.severity === "Medium"
+  ).length;
+
+  const averageResolutionConfidence =
+    blockers.length === 0
+      ? 0
+      : Math.round(
+        blockers.reduce(
+          (total, blocker) =>
+            total + Number(blocker.resolution_confidence ?? 0),
+            0
+          ) / blockers.length
+        );
+
+  return (
+    <section className="mt-8">
+      <p className="text-sm font-bold uppercase tracking-[0.32em] text-cyan-300">
+        Risk Escalation
+      </p>
+
+      <div className="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h1 className="text-5xl font-bold tracking-tight text-white">
+            Blockers
+          </h1>
+          <p className="mt-4 max-w-4xl leading-8 text-slate-300">
+            Track active customer deployment blockers, severity, ownership,
+            escalation paths, required actions, resolution confidence, and
+            operational impact.
+          </p>
+        </div>
+
+        <StatusPill tone="amber">{blockers.length} Active Blockers</StatusPill>
+      </div>
+
+      <section className="mt-7 grid gap-5 md:grid-cols-4">
+        <MetricCard
+          item={{
+            label: "High Severity",
+            value: String(highSeverityCount),
+            change: "high",
+            detail: "blockers needing escalation",
+            icon: AlertTriangle,
+            tone: "rose",
+          }}
+        />
+        <MetricCard
+          item={{
+            label: "Medium Severity",
+            value: String(mediumSeverityCount),
+            change: "medium",
+            detail: "active operational constraints",
+            icon: AlertTriangle,
+            tone: "amber",
+          }}
+        />
+        <MetricCard
+          item={{
+            label: "Total Risk Items",
+            value: String(blockers.length),
+            change: "tracked",
+            detail: "tracked across customers",
+            icon: ClipboardList,
+            tone: "cyan",
+          }}
+        />
+        <MetricCard
+          item={{
+            label: "Resolution Confidence",
+            value: `${averageResolutionConfidence}%`,
+            change: "+12",
+            detail: "average recovery confidence",
+            icon: Activity,
+            tone: "emerald",
+          }}
+        />
+      </section>
+
+      <div className={`${panel} mt-7 p-6`}>
+        <h2 className="text-2xl font-bold text-white">
+          Deployment Blocker Matrix
+        </h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Live blocker records loaded from Supabase.
+        </p>
+
+        <div className="mt-7 space-y-4">
+          {isLoading && (
+            <div className={`${glass} p-5 text-slate-300`}>
+              Loading blocker records from Supabase...
+            </div>
+          )}
+
+          {loadError && (
+            <div className="rounded-3xl border border-rose-400/30 bg-rose-400/10 p-5 text-rose-200">
+              Supabase error: {loadError}
+            </div>
+          )}
+
+          {!isLoading &&
+            !loadError &&
+            blockers.map((blocker) => (
+              <div key={blocker.id} className={`${glass} p-5`}>
+                <div className="grid gap-5 xl:grid-cols-12 xl:items-center">
+                  <div className="xl:col-span-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      Blocker
+                    </p>
+                    <h3 className="mt-2 text-lg font-bold text-white">
+                      {blocker.title}
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {blocker.customers?.company_name ?? "Unknown Customer"}
+                    </p>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">Category</p>
+                    <p className="mt-1 font-semibold text-slate-200">
+                      {blocker.category}
+                    </p>
+                  </div>
+
+                  <div className="xl:col-span-1">
+                    <p className="text-xs text-slate-500">Severity</p>
+                    <div className="mt-2">
+                      <StatusPill tone={getSeverityTone(blocker.severity)}>
+                        {blocker.severity}
+                      </StatusPill>
+                    </div>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">Owner</p>
+                    <p className="mt-1 font-semibold text-white">
+                      {blocker.owner}
+                    </p>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">Time Open</p>
+                    <p className="mt-1 font-semibold text-slate-200">
+                      {blocker.time_open_days} days
+                    </p>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">
+                      Resolution Confidence
+                    </p>
+                    <p className="mt-1 text-2xl font-bold text-cyan-300">
+                      {blocker.resolution_confidence}%
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 h-3 rounded-full bg-slate-800">
+                  <div
+                    className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400"
+                    style={{ width: `${blocker.resolution_confidence}%` }}
+                  />
+                </div>
+
+                <div className="mt-5 grid gap-4 lg:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-700/70 bg-slate-950/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      Affected Use Case
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
+                      {blocker.affected_use_case}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-700/70 bg-slate-950/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      Customer Impact
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
+                      {blocker.customer_impact}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-700/70 bg-slate-950/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      Escalation Path
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
+                      {blocker.escalation_path}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">
+                    Required Action
+                  </p>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-100">
+                    {blocker.required_action}
+                  </p>
+                </div>
+              </div>
+            ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -1408,15 +1634,22 @@ function App() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null
   );
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [useCases, setUseCases] = useState<UseCase[]>([]);
+  const [blockers, setBlockers] = useState<Blocker[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [isDeploymentsLoading, setIsDeploymentsLoading] = useState(true);
   const [isUseCasesLoading, setIsUseCasesLoading] = useState(true);
+  const [isBlockersLoading, setIsBlockersLoading] = useState(true);
+
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deploymentsError, setDeploymentsError] = useState<string | null>(null);
   const [useCasesError, setUseCasesError] = useState<string | null>(null);
+  const [blockersError, setBlockersError] = useState<string | null>(null);
+
   const [deletingCustomerId, setDeletingCustomerId] = useState<string | null>(
     null
   );
@@ -1495,6 +1728,34 @@ function App() {
     }
 
     loadUseCases();
+  }, []);
+
+  useEffect(() => {
+    async function loadBlockers() {
+      const { data, error } = await supabase
+        .from("blockers")
+        .select(
+          `
+          *,
+          customers (
+            company_name,
+            industry
+          )
+        `
+        )
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        setBlockersError(error.message);
+        setIsBlockersLoading(false);
+        return;
+      }
+
+      setBlockers((data ?? []) as Blocker[]);
+      setIsBlockersLoading(false);
+    }
+
+    loadBlockers();
   }, []);
 
   const dashboardMetrics = useMemo(() => {
@@ -1627,6 +1888,12 @@ function App() {
             useCases={useCases}
             isLoading={isUseCasesLoading}
             loadError={useCasesError}
+          />
+        ) : activePage === "Blockers" ? (
+          <BlockersPage
+            blockers={blockers}
+            isLoading={isBlockersLoading}
+            loadError={blockersError}
           />
         ) : (
           <DashboardPage
