@@ -11,6 +11,7 @@ import type { Customer } from "./types/customer";
 import type { Deployment } from "./types/deployment";
 import type { UseCase } from "./types/useCase";
 import type { Blocker } from "./types/blocker";
+import type { Stakeholder } from "./types/stakeholder";
 
 import {
   Activity,
@@ -100,8 +101,39 @@ function getSeverityTone(severity: string): Tone {
   return "slate";
 }
 
+function getInfluenceTone(influence: string | null): Tone {
+  if (influence === "High") return "emerald";
+  if (influence === "Medium") return "cyan";
+  if (influence === "Low") return "slate";
+  return "slate";
+}
+
+function getSentimentTone(sentiment: string | null): Tone {
+  if (sentiment === "Aligned") return "emerald";
+  if (sentiment === "Needs Enablement") return "amber";
+  if (sentiment === "At Risk") return "rose";
+  return "slate";
+}
+
+function getEngagementTone(status: string | null): Tone {
+  if (status === "Active") return "emerald";
+  if (status === "At Risk") return "amber";
+  if (status === "Blocked") return "rose";
+  return "slate";
+}
+
 function formatMonthlyValue(value: number) {
   return `$${Math.round(Number(value ?? 0) / 1000)}K/mo`;
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "No touchpoint logged";
+
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 function StatusPill({
@@ -681,7 +713,7 @@ function DashboardPage({
 
           <div className="mt-7 space-y-4">
             {isLoading && (
-              <div className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5 text-slate-300">
+              <div className={`${glass} p-5 text-slate-300`}>
                 Loading customer deployment records from Supabase...
               </div>
             )}
@@ -695,10 +727,7 @@ function DashboardPage({
             {!isLoading &&
               !loadError &&
               customers.map((row) => (
-                <div
-                  key={row.id}
-                  className="rounded-3xl border border-slate-700/70 bg-slate-950/50 p-5"
-                >
+                <div key={row.id} className={`${glass} p-5`}>
                   <div className="grid gap-5 lg:grid-cols-12 lg:items-center">
                     <div className="lg:col-span-3">
                       <h3 className="text-lg font-bold text-white">
@@ -859,7 +888,8 @@ function CustomersPage({
               Customer Deployment Table
             </h2>
             <p className="mt-1 text-sm text-slate-400">
-              Live customer records loaded from Supabase with search and filter controls.
+              Live customer records loaded from Supabase with search and filter
+              controls.
             </p>
           </div>
 
@@ -869,7 +899,9 @@ function CustomersPage({
         </div>
 
         <div className="mt-6 grid gap-3 xl:grid-cols-12">
-          <div className={`${glass} flex items-center gap-3 px-4 py-3 xl:col-span-6`}>
+          <div
+            className={`${glass} flex items-center gap-3 px-4 py-3 xl:col-span-6`}
+          >
             <Search size={18} className="text-slate-500" />
             <input
               value={searchTerm}
@@ -1010,7 +1042,7 @@ function CustomersPage({
         )}
       </div>
     </section>
-  );
+    );
 }
 
 function DeploymentsPage({
@@ -1037,7 +1069,8 @@ function DeploymentsPage({
       ? 0
       : Math.round(
           deployments.reduce(
-            (total, deployment) => total + deployment.technical_readiness,
+            (total, deployment) =>
+              total + Number(deployment.technical_readiness ?? 0),
             0
           ) / deployments.length
         );
@@ -1145,7 +1178,7 @@ function DeploymentsPage({
                       Technical Readiness
                     </p>
                     <p className="mt-1 text-2xl font-bold text-cyan-300">
-                      {deployment.technical_readiness}%
+                      {Number(deployment.technical_readiness ?? 0)}%
                     </p>
                   </div>
 
@@ -1174,7 +1207,9 @@ function DeploymentsPage({
                 <div className="mt-5 h-3 rounded-full bg-slate-800">
                   <div
                     className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400"
-                    style={{ width: `${deployment.technical_readiness}%` }}
+                    style={{
+                      width: `${Number(deployment.technical_readiness ?? 0)}%`,
+                    }}
                   />
                 </div>
 
@@ -1220,7 +1255,7 @@ function UseCasesPage({
       ? 0
       : Math.round(
           useCases.reduce(
-            (total, useCase) => total + useCase.confidence_score,
+            (total, useCase) => total + Number(useCase.confidence_score ?? 0),
             0
           ) / useCases.length
         );
@@ -1346,7 +1381,7 @@ function UseCasesPage({
                   <div className="xl:col-span-2">
                     <p className="text-xs text-slate-500">Confidence</p>
                     <p className="mt-1 text-2xl font-bold text-cyan-300">
-                      {useCase.confidence_score}%
+                      {Number(useCase.confidence_score ?? 0)}%
                     </p>
                   </div>
 
@@ -1370,7 +1405,9 @@ function UseCasesPage({
                 <div className="mt-5 h-3 rounded-full bg-slate-800">
                   <div
                     className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400"
-                    style={{ width: `${useCase.confidence_score}%` }}
+                    style={{
+                      width: `${Number(useCase.confidence_score ?? 0)}%`,
+                    }}
                   />
                 </div>
 
@@ -1380,7 +1417,7 @@ function UseCasesPage({
                       Workflow Detail
                     </p>
                     <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
-                      {useCase.workflow_detail}
+                      {useCase.workflow_detail || "Workflow detail not provided."}
                     </p>
                   </div>
 
@@ -1389,7 +1426,7 @@ function UseCasesPage({
                       Next Milestone
                     </p>
                     <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
-                      {useCase.next_milestone}
+                      {useCase.next_milestone || "Next milestone not logged."}
                     </p>
                     <p className="mt-3 text-xs text-slate-500">
                       Technical Owner: {useCase.technical_owner}
@@ -1425,9 +1462,9 @@ function BlockersPage({
     blockers.length === 0
       ? 0
       : Math.round(
-        blockers.reduce(
-          (total, blocker) =>
-            total + Number(blocker.resolution_confidence ?? 0),
+          blockers.reduce(
+            (total, blocker) =>
+              total + Number(blocker.resolution_confidence ?? 0),
             0
           ) / blockers.length
         );
@@ -1537,7 +1574,7 @@ function BlockersPage({
                   <div className="xl:col-span-2">
                     <p className="text-xs text-slate-500">Category</p>
                     <p className="mt-1 font-semibold text-slate-200">
-                      {blocker.category}
+                      {blocker.category || "Operational"}
                     </p>
                   </div>
 
@@ -1560,7 +1597,7 @@ function BlockersPage({
                   <div className="xl:col-span-2">
                     <p className="text-xs text-slate-500">Time Open</p>
                     <p className="mt-1 font-semibold text-slate-200">
-                      {blocker.time_open_days} days
+                      {Number(blocker.time_open_days ?? 0)} days
                     </p>
                   </div>
 
@@ -1569,7 +1606,7 @@ function BlockersPage({
                       Resolution Confidence
                     </p>
                     <p className="mt-1 text-2xl font-bold text-cyan-300">
-                      {blocker.resolution_confidence}%
+                      {Number(blocker.resolution_confidence ?? 0)}%
                     </p>
                   </div>
                 </div>
@@ -1577,7 +1614,9 @@ function BlockersPage({
                 <div className="mt-5 h-3 rounded-full bg-slate-800">
                   <div
                     className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400"
-                    style={{ width: `${blocker.resolution_confidence}%` }}
+                    style={{
+                      width: `${Number(blocker.resolution_confidence ?? 0)}%`,
+                    }}
                   />
                 </div>
 
@@ -1587,7 +1626,8 @@ function BlockersPage({
                       Affected Use Case
                     </p>
                     <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
-                      {blocker.affected_use_case}
+                      {blocker.affected_use_case ||
+                        "Customer workflow adoption"}
                     </p>
                   </div>
 
@@ -1596,7 +1636,8 @@ function BlockersPage({
                       Customer Impact
                     </p>
                     <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
-                      {blocker.customer_impact}
+                      {blocker.customer_impact ||
+                        "Deployment momentum slowed until blocker is resolved."}
                     </p>
                   </div>
 
@@ -1605,7 +1646,8 @@ function BlockersPage({
                       Escalation Path
                     </p>
                     <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
-                      {blocker.escalation_path}
+                      {blocker.escalation_path ||
+                        "Customer Success / Technical Success"}
                     </p>
                   </div>
                 </div>
@@ -1615,7 +1657,239 @@ function BlockersPage({
                     Required Action
                   </p>
                   <p className="mt-2 text-sm font-semibold leading-6 text-slate-100">
-                    {blocker.required_action}
+                    {blocker.required_action ||
+                      "Assign owner, confirm next action, and review progress in the next customer checkpoint."}
+                  </p>
+                </div>
+              </div>
+            ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StakeholdersPage({
+  stakeholders,
+  isLoading,
+  loadError,
+}: {
+  stakeholders: Stakeholder[];
+  isLoading: boolean;
+  loadError: string | null;
+}) {
+  const executiveCount = stakeholders.filter((stakeholder) =>
+    stakeholder.role.toLowerCase().includes("executive")
+  ).length;
+
+  const highInfluenceCount = stakeholders.filter(
+    (stakeholder) => stakeholder.influence_level === "High"
+  ).length;
+
+  const alignedCount = stakeholders.filter(
+    (stakeholder) => stakeholder.sentiment === "Aligned"
+  ).length;
+
+  const atRiskCount = stakeholders.filter(
+    (stakeholder) =>
+      stakeholder.sentiment === "At Risk" ||
+      stakeholder.engagement_status === "At Risk"
+  ).length;
+
+  return (
+    <section className="mt-8">
+      <p className="text-sm font-bold uppercase tracking-[0.32em] text-cyan-300">
+        Stakeholder Alignment
+      </p>
+
+      <div className="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h1 className="text-5xl font-bold tracking-tight text-white">
+            Stakeholders
+          </h1>
+          <p className="mt-4 max-w-4xl leading-8 text-slate-300">
+            Track executive sponsors, business owners, technical champions,
+            influence level, sentiment, engagement status, ownership, and next
+            alignment actions across customer deployments.
+          </p>
+        </div>
+
+        <StatusPill tone="emerald">
+          {stakeholders.length} Stakeholders
+        </StatusPill>
+      </div>
+
+      <section className="mt-7 grid gap-5 md:grid-cols-4">
+        <MetricCard
+          item={{
+            label: "Executive Sponsors",
+            value: String(executiveCount),
+            change: "exec",
+            detail: "sponsor relationships",
+            icon: Users,
+            tone: "emerald",
+          }}
+        />
+
+        <MetricCard
+          item={{
+            label: "High Influence",
+            value: String(highInfluenceCount),
+            change: "high",
+            detail: "decision makers",
+            icon: Activity,
+            tone: "cyan",
+          }}
+        />
+
+        <MetricCard
+          item={{
+            label: "Aligned",
+            value: String(alignedCount),
+            change: "healthy",
+            detail: "positive engagement",
+            icon: CheckCircle2,
+            tone: "emerald",
+          }}
+        />
+
+        <MetricCard
+          item={{
+            label: "At Risk",
+            value: String(atRiskCount),
+            change: "watch",
+            detail: "needs attention",
+            icon: AlertTriangle,
+            tone: "amber",
+          }}
+        />
+      </section>
+
+      <div className={`${panel} mt-7 p-6`}>
+        <h2 className="text-2xl font-bold text-white">
+          Stakeholder Engagement Map
+        </h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Live stakeholder records loaded from Supabase.
+        </p>
+
+        <div className="mt-7 space-y-4">
+          {isLoading && (
+            <div className={`${glass} p-5 text-slate-300`}>
+              Loading stakeholder records from Supabase...
+            </div>
+          )}
+
+          {loadError && (
+            <div className="rounded-3xl border border-rose-400/30 bg-rose-400/10 p-5 text-rose-200">
+              Supabase error: {loadError}
+            </div>
+          )}
+
+          {!isLoading &&
+            !loadError &&
+            stakeholders.map((stakeholder) => (
+              <div key={stakeholder.id} className={`${glass} p-5`}>
+                <div className="grid gap-5 xl:grid-cols-12 xl:items-center">
+                  <div className="xl:col-span-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      Stakeholder
+                    </p>
+                    <h3 className="mt-2 text-lg font-bold text-white">
+                      {stakeholder.full_name}
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {stakeholder.customers?.company_name ??
+                        "Unknown Customer"}
+                    </p>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">Role</p>
+                    <p className="mt-1 font-semibold text-slate-200">
+                      {stakeholder.role}
+                    </p>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">Department</p>
+                    <p className="mt-1 font-semibold text-slate-200">
+                      {stakeholder.department}
+                    </p>
+                  </div>
+
+                  <div className="xl:col-span-1">
+                    <p className="text-xs text-slate-500">Influence</p>
+                    <div className="mt-2">
+                      <StatusPill
+                        tone={getInfluenceTone(stakeholder.influence_level)}
+                      >
+                        {stakeholder.influence_level ?? "Unknown"}
+                      </StatusPill>
+                    </div>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">Sentiment</p>
+                    <div className="mt-2">
+                      <StatusPill
+                        tone={getSentimentTone(stakeholder.sentiment)}
+                      >
+                        {stakeholder.sentiment ?? "Unknown"}
+                      </StatusPill>
+                    </div>
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <p className="text-xs text-slate-500">Engagement</p>
+                    <div className="mt-2">
+                      <StatusPill
+                        tone={getEngagementTone(
+                          stakeholder.engagement_status
+                        )}
+                      >
+                        {stakeholder.engagement_status ?? "Unknown"}
+                      </StatusPill>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-4 lg:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-700/70 bg-slate-950/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      Function Area
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
+                      {stakeholder.function_area ?? "Not specified"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-700/70 bg-slate-950/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      Last Touchpoint
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
+                      {formatDate(stakeholder.last_touchpoint)}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-700/70 bg-slate-950/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      Internal Owner
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
+                      {stakeholder.owner ?? "AI Success"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">
+                    Next Stakeholder Action
+                  </p>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-100">
+                    {stakeholder.next_action ??
+                      "Schedule stakeholder alignment checkpoint."}
                   </p>
                 </div>
               </div>
@@ -1639,16 +1913,21 @@ function App() {
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [blockers, setBlockers] = useState<Blocker[]>([]);
+  const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isDeploymentsLoading, setIsDeploymentsLoading] = useState(true);
   const [isUseCasesLoading, setIsUseCasesLoading] = useState(true);
   const [isBlockersLoading, setIsBlockersLoading] = useState(true);
+  const [isStakeholdersLoading, setIsStakeholdersLoading] = useState(true);
 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deploymentsError, setDeploymentsError] = useState<string | null>(null);
   const [useCasesError, setUseCasesError] = useState<string | null>(null);
   const [blockersError, setBlockersError] = useState<string | null>(null);
+  const [stakeholdersError, setStakeholdersError] = useState<string | null>(
+    null
+  );
 
   const [deletingCustomerId, setDeletingCustomerId] = useState<string | null>(
     null
@@ -1756,6 +2035,34 @@ function App() {
     }
 
     loadBlockers();
+  }, []);
+
+  useEffect(() => {
+    async function loadStakeholders() {
+      const { data, error } = await supabase
+        .from("stakeholders")
+        .select(
+          `
+          *,
+          customers (
+            company_name,
+            industry
+          )
+        `
+        )
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        setStakeholdersError(error.message);
+        setIsStakeholdersLoading(false);
+        return;
+      }
+
+      setStakeholders((data ?? []) as Stakeholder[]);
+      setIsStakeholdersLoading(false);
+    }
+
+    loadStakeholders();
   }, []);
 
   const dashboardMetrics = useMemo(() => {
@@ -1894,6 +2201,12 @@ function App() {
             blockers={blockers}
             isLoading={isBlockersLoading}
             loadError={blockersError}
+          />
+        ) : activePage === "Stakeholders" ? (
+          <StakeholdersPage
+            stakeholders={stakeholders}
+            isLoading={isStakeholdersLoading}
+            loadError={stakeholdersError}
           />
         ) : (
           <DashboardPage
