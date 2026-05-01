@@ -12,6 +12,7 @@ import type { Deployment } from "./types/deployment";
 import type { UseCase } from "./types/useCase";
 import type { Blocker } from "./types/blocker";
 import type { Stakeholder } from "./types/stakeholder";
+import type { ValueMetric } from "./types/valueMetric";
 
 import {
   Activity,
@@ -24,12 +25,15 @@ import {
   ChevronDown,
   ClipboardList,
   Database,
+  DollarSign,
   FileText,
   LayoutDashboard,
   Network,
   Search,
   Settings,
   Sparkles,
+  Target,
+  TrendingUp,
   Users,
   Workflow,
 } from "lucide-react";
@@ -122,8 +126,20 @@ function getEngagementTone(status: string | null): Tone {
   return "slate";
 }
 
-function formatMonthlyValue(value: number) {
+function getValueConfidenceTone(score: number | null): Tone {
+  const value = Number(score ?? 0);
+  if (value >= 85) return "emerald";
+  if (value >= 70) return "cyan";
+  if (value >= 55) return "amber";
+  return "rose";
+}
+
+function formatMonthlyValue(value: number | null) {
   return `$${Math.round(Number(value ?? 0) / 1000)}K/mo`;
+}
+
+function formatCurrency(value: number | null) {
+  return `$${Math.round(Number(value ?? 0)).toLocaleString()}`;
 }
 
 function formatDate(value: string | null) {
@@ -1042,7 +1058,7 @@ function CustomersPage({
         )}
       </div>
     </section>
-    );
+  );
 }
 
 function DeploymentsPage({
@@ -1417,7 +1433,8 @@ function UseCasesPage({
                       Workflow Detail
                     </p>
                     <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
-                      {useCase.workflow_detail || "Workflow detail not provided."}
+                      {useCase.workflow_detail ||
+                        "Workflow detail not provided."}
                     </p>
                   </div>
 
@@ -1730,7 +1747,6 @@ function StakeholdersPage({
             tone: "emerald",
           }}
         />
-
         <MetricCard
           item={{
             label: "High Influence",
@@ -1741,7 +1757,6 @@ function StakeholdersPage({
             tone: "cyan",
           }}
         />
-
         <MetricCard
           item={{
             label: "Aligned",
@@ -1752,7 +1767,6 @@ function StakeholdersPage({
             tone: "emerald",
           }}
         />
-
         <MetricCard
           item={{
             label: "At Risk",
@@ -1900,6 +1914,251 @@ function StakeholdersPage({
   );
 }
 
+function ValueTrackingPage({
+  valueMetrics,
+  isLoading,
+  loadError,
+}: {
+  valueMetrics: ValueMetric[];
+  isLoading: boolean;
+  loadError: string | null;
+}) {
+  const totalMonthlyImpact = valueMetrics.reduce(
+    (total, metric) => total + Number(metric.monthly_impact ?? 0),
+    0
+  );
+
+  const totalCurrentValue = valueMetrics.reduce(
+    (total, metric) => total + Number(metric.current_value ?? 0),
+    0
+  );
+
+  const totalTargetValue = valueMetrics.reduce(
+    (total, metric) => total + Number(metric.target_value ?? 0),
+    0
+  );
+
+  const averageConfidence =
+    valueMetrics.length === 0
+      ? 0
+      : Math.round(
+          valueMetrics.reduce(
+            (total, metric) => total + Number(metric.confidence_score ?? 0),
+            0
+          ) / valueMetrics.length
+        );
+
+  const targetProgress =
+    totalTargetValue === 0
+      ? 0
+      : Math.min(Math.round((totalCurrentValue / totalTargetValue) * 100), 100);
+
+  return (
+    <section className="mt-8">
+      <p className="text-sm font-bold uppercase tracking-[0.32em] text-cyan-300">
+        Value Realization
+      </p>
+
+      <div className="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h1 className="text-5xl font-bold tracking-tight text-white">
+            Value Tracking
+          </h1>
+          <p className="mt-4 max-w-4xl leading-8 text-slate-300">
+            Track realized business impact, projected value, confidence,
+            customer outcomes, ownership, and next value actions across AI
+            deployment programs.
+          </p>
+        </div>
+
+        <StatusPill tone="emerald">
+          {valueMetrics.length} Value Metrics
+        </StatusPill>
+      </div>
+
+      <section className="mt-7 grid gap-5 md:grid-cols-4">
+        <MetricCard
+          item={{
+            label: "Monthly Impact",
+            value: formatMonthlyValue(totalMonthlyImpact),
+            change: "+21%",
+            detail: "realized customer value",
+            icon: DollarSign,
+            tone: "emerald",
+          }}
+        />
+
+        <MetricCard
+          item={{
+            label: "Current Value",
+            value: formatCurrency(totalCurrentValue),
+            change: "live",
+            detail: "current measured value",
+            icon: TrendingUp,
+            tone: "cyan",
+          }}
+        />
+
+        <MetricCard
+          item={{
+            label: "Target Progress",
+            value: `${targetProgress}%`,
+            change: "target",
+            detail: "toward projected value",
+            icon: Target,
+            tone: "amber",
+          }}
+        />
+
+        <MetricCard
+          item={{
+            label: "Confidence",
+            value: `${averageConfidence}%`,
+            change: "score",
+            detail: "average value confidence",
+            icon: Activity,
+            tone: getValueConfidenceTone(averageConfidence),
+          }}
+        />
+      </section>
+
+      <div className={`${panel} mt-7 p-6`}>
+        <h2 className="text-2xl font-bold text-white">
+          Customer Value Realization Pipeline
+        </h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Live value metric records loaded from Supabase.
+        </p>
+
+        <div className="mt-7 space-y-4">
+          {isLoading && (
+            <div className={`${glass} p-5 text-slate-300`}>
+              Loading value metrics from Supabase...
+            </div>
+          )}
+
+          {loadError && (
+            <div className="rounded-3xl border border-rose-400/30 bg-rose-400/10 p-5 text-rose-200">
+              Supabase error: {loadError}
+            </div>
+          )}
+
+          {!isLoading &&
+            !loadError &&
+            valueMetrics.map((metric) => {
+              const current = Number(metric.current_value ?? 0);
+              const target = Number(metric.target_value ?? 0);
+              const progress =
+                target === 0
+                  ? 0
+                  : Math.min(Math.round((current / target) * 100), 100);
+
+              return (
+                <div key={metric.id} className={`${glass} p-5`}>
+                  <div className="grid gap-5 xl:grid-cols-12 xl:items-center">
+                    <div className="xl:col-span-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                        Value Metric
+                      </p>
+                      <h3 className="mt-2 text-lg font-bold text-white">
+                        {metric.metric_name}
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {metric.customers?.company_name ?? "Unknown Customer"}
+                      </p>
+                    </div>
+
+                    <div className="xl:col-span-2">
+                      <p className="text-xs text-slate-500">Category</p>
+                      <p className="mt-1 font-semibold text-slate-200">
+                        {metric.category ?? "Operational Efficiency"}
+                      </p>
+                    </div>
+
+                    <div className="xl:col-span-2">
+                      <p className="text-xs text-slate-500">Current Value</p>
+                      <p className="mt-1 text-lg font-bold text-white">
+                        {formatCurrency(metric.current_value)}
+                      </p>
+                    </div>
+
+                    <div className="xl:col-span-2">
+                      <p className="text-xs text-slate-500">Target Value</p>
+                      <p className="mt-1 text-lg font-bold text-white">
+                        {formatCurrency(metric.target_value)}
+                      </p>
+                    </div>
+
+                    <div className="xl:col-span-1">
+                      <p className="text-xs text-slate-500">Confidence</p>
+                      <div className="mt-2">
+                        <StatusPill
+                          tone={getValueConfidenceTone(
+                            metric.confidence_score
+                          )}
+                        >
+                          {Number(metric.confidence_score ?? 0)}%
+                        </StatusPill>
+                      </div>
+                    </div>
+
+                    <div className="xl:col-span-2">
+                      <p className="text-xs text-slate-500">Monthly Impact</p>
+                      <p className="mt-1 text-2xl font-bold text-emerald-300">
+                        {formatMonthlyValue(metric.monthly_impact)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 h-3 rounded-full bg-slate-800">
+                    <div
+                      className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+
+                  <div className="mt-5 grid gap-4 lg:grid-cols-3">
+                    <div className="rounded-2xl border border-slate-700/70 bg-slate-950/60 p-4 lg:col-span-2">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                        Business Outcome
+                      </p>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
+                        {metric.business_outcome ??
+                          "Customer is realizing measurable business value through AI workflow deployment."}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-700/70 bg-slate-950/60 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                        Internal Owner
+                      </p>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
+                        {metric.owner ?? "AI Success"}
+                      </p>
+                      <p className="mt-3 text-xs text-slate-500">
+                        Progress to target: {progress}%
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">
+                      Next Value Action
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-100">
+                      {metric.next_action ??
+                        "Review value realization progress with customer sponsor and identify expansion workflow."}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -1914,18 +2173,23 @@ function App() {
   const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [blockers, setBlockers] = useState<Blocker[]>([]);
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
+  const [valueMetrics, setValueMetrics] = useState<ValueMetric[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isDeploymentsLoading, setIsDeploymentsLoading] = useState(true);
   const [isUseCasesLoading, setIsUseCasesLoading] = useState(true);
   const [isBlockersLoading, setIsBlockersLoading] = useState(true);
   const [isStakeholdersLoading, setIsStakeholdersLoading] = useState(true);
+  const [isValueMetricsLoading, setIsValueMetricsLoading] = useState(true);
 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deploymentsError, setDeploymentsError] = useState<string | null>(null);
   const [useCasesError, setUseCasesError] = useState<string | null>(null);
   const [blockersError, setBlockersError] = useState<string | null>(null);
   const [stakeholdersError, setStakeholdersError] = useState<string | null>(
+    null
+  );
+  const [valueMetricsError, setValueMetricsError] = useState<string | null>(
     null
   );
 
@@ -2063,6 +2327,34 @@ function App() {
     }
 
     loadStakeholders();
+  }, []);
+
+  useEffect(() => {
+    async function loadValueMetrics() {
+      const { data, error } = await supabase
+        .from("value_metrics")
+        .select(
+          `
+          *,
+          customers (
+            company_name,
+            industry
+          )
+        `
+        )
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        setValueMetricsError(error.message);
+        setIsValueMetricsLoading(false);
+        return;
+      }
+
+      setValueMetrics((data ?? []) as ValueMetric[]);
+      setIsValueMetricsLoading(false);
+    }
+
+    loadValueMetrics();
   }, []);
 
   const dashboardMetrics = useMemo(() => {
@@ -2207,6 +2499,12 @@ function App() {
             stakeholders={stakeholders}
             isLoading={isStakeholdersLoading}
             loadError={stakeholdersError}
+          />
+        ) : activePage === "Value Tracking" ? (
+          <ValueTrackingPage
+            valueMetrics={valueMetrics}
+            isLoading={isValueMetricsLoading}
+            loadError={valueMetricsError}
           />
         ) : (
           <DashboardPage
